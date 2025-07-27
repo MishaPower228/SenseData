@@ -8,7 +8,6 @@
     android:background="@color/background_color"
     tools:context=".MainActivity">
 
-
     <!-- Toolbar -->
     <androidx.appcompat.widget.Toolbar
         android:id="@+id/custom_toolbar"
@@ -47,6 +46,137 @@
         </RelativeLayout>
     </androidx.appcompat.widget.Toolbar>
 
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/weather_card"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_margin="10dp"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/bg_chip_rounded"
+        android:padding="16dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/custom_toolbar">
+
+        <!-- Місто -->
+        <TextView
+            android:id="@+id/textWeatherCity"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_weather_label"
+            android:text="Місто: ..."
+            android:textColor="@color/weather_card_text"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <!-- Іконка -->
+        <ImageView
+            android:id="@+id/imageWeatherIcon"
+            android:layout_width="129dp"
+            android:layout_height="143dp"
+            android:layout_marginTop="8dp"
+            android:contentDescription="Іконка погоди"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/textWeatherCity" />
+
+        <!-- Назва погоди -->
+        <TextView
+            android:id="@+id/textWeatherMain"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/bg_weather_label"
+            android:text="Погода: ..."
+            android:textColor="@color/weather_card_text"
+            android:textSize="15sp"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/textWeatherPressure" />
+
+        <!-- Опис -->
+        <TextView
+            android:id="@+id/textWeatherDescription"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_weather_label"
+            android:text="Опис: ..."
+            android:textColor="@color/weather_card_text"
+            android:textSize="15sp"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/textWeatherMain" />
+
+        <!-- Температура -->
+        <TextView
+            android:id="@+id/textWeatherTemp"
+            android:layout_width="200dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="15dp"
+            android:layout_marginTop="15dp"
+            android:background="@drawable/bg_weather_label"
+            android:text="🌡 Температура: ..."
+            android:textColor="@color/weather_card_text"
+            android:textSize="15sp"
+            app:layout_constraintStart_toEndOf="@id/imageWeatherIcon"
+            app:layout_constraintTop_toBottomOf="@+id/textWeatherCity" />
+
+        <!-- Відчувається -->
+        <TextView
+            android:id="@+id/textWeatherFeelsLike"
+            android:layout_width="200dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_weather_label"
+            android:text="Відчувається як: ..."
+            android:textColor="@color/weather_card_text"
+            android:textSize="15sp"
+            app:layout_constraintStart_toStartOf="@id/textWeatherTemp"
+            app:layout_constraintTop_toBottomOf="@id/textWeatherTemp" />
+
+        <!-- Вологість -->
+        <TextView
+            android:id="@+id/textWeatherHumidity"
+            android:layout_width="200dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_weather_label"
+            android:text="💧 Вологість: ..."
+            android:textColor="@color/weather_card_text"
+            android:textSize="15sp"
+            app:layout_constraintStart_toStartOf="@id/textWeatherTemp"
+            app:layout_constraintTop_toBottomOf="@id/textWeatherFeelsLike" />
+
+        <!-- Тиск -->
+        <TextView
+            android:id="@+id/textWeatherPressure"
+            android:layout_width="200dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_weather_label"
+            android:text="🧭 Тиск: ..."
+            android:textColor="@color/weather_card_text"
+            android:textSize="15sp"
+            app:layout_constraintStart_toStartOf="@id/textWeatherTemp"
+            app:layout_constraintTop_toBottomOf="@id/textWeatherHumidity" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/room_recycler_view"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:layout_marginTop="5dp"
+        android:clipToPadding="false"
+        android:orientation="horizontal"
+        android:overScrollMode="never"
+        android:padding="8dp"
+        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/weather_card"
+        tools:listitem="@layout/item_room_chip" />
+
     <!-- Header Image -->
     <LinearLayout
         android:id="@+id/header"
@@ -57,9 +187,9 @@
         android:background="@drawable/bg_chip_rounded"
         android:orientation="vertical"
         android:padding="12dp"
-        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/room_recycler_view"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/custom_toolbar">
+        app:layout_constraintEnd_toEndOf="parent">
 
         <com.google.android.material.imageview.ShapeableImageView
             android:id="@+id/headerImage"
@@ -71,88 +201,17 @@
             app:shapeAppearanceOverlay="@style/RoundedImageView" />
     </LinearLayout>
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/room_recycler_view"
-        android:layout_width="match_parent"
-        android:layout_height="210dp"
-        android:layout_marginStart="10dp"
-        android:layout_marginTop="10dp"
-        android:clipToPadding="false"
-        android:orientation="horizontal"
-        android:overScrollMode="never"
-        android:padding="8dp"
-        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/header"
-        tools:listitem="@layout/item_room_chip" />
-
-    <LinearLayout
-        android:id="@+id/weather_card"
-        android:layout_width="0dp"
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fab_create_room"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_margin="16dp"
-        android:orientation="vertical"
-        android:padding="16dp"
-        android:background="@drawable/bg_chip_rounded"
-        app:layout_constraintTop_toBottomOf="@id/room_recycler_view"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
+        android:src="@drawable/ic_add"
+        app:backgroundTint="@color/background_toolbar_color"
+        app:borderWidth="15dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:maxImageSize="45dp"
+        app:tint="@color/bg_weather_card" />
 
-        <TextView
-            android:id="@+id/textWeatherCity"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Місто: ..."
-            android:textStyle="bold"
-            android:textSize="18sp" />
-
-        <ImageView
-            android:id="@+id/imageWeatherIcon"
-            android:layout_width="64dp"
-            android:layout_height="64dp"
-            android:layout_marginTop="8dp"
-            android:contentDescription="Іконка погоди" />
-
-        <TextView
-            android:id="@+id/textWeatherMain"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Погода: ..."
-            android:textSize="16sp" />
-
-        <TextView
-            android:id="@+id/textWeatherDescription"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Опис: ..."
-            android:textSize="14sp" />
-
-        <TextView
-            android:id="@+id/textWeatherTemp"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="🌡 Температура: ..."
-            android:textSize="16sp" />
-
-        <TextView
-            android:id="@+id/textWeatherFeelsLike"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Відчувається як: ..."
-            android:textSize="14sp" />
-
-        <TextView
-            android:id="@+id/textWeatherHumidity"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="💧 Вологість: ..."
-            android:textSize="14sp" />
-
-        <TextView
-            android:id="@+id/textWeatherPressure"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Тиск: ..."
-            android:textSize="14sp" />
-    </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>
