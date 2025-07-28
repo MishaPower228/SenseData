@@ -26,7 +26,7 @@
         android:layout_marginTop="8dp">
 
         <ImageView
-            android:id="@+id/imageOption1"
+            android:id="@+id/img1"
             android:layout_width="100dp"
             android:layout_height="100dp"
             android:src="@drawable/livingroom"
@@ -35,7 +35,7 @@
             android:background="?selectableItemBackgroundBorderless" />
 
         <ImageView
-            android:id="@+id/imageOption2"
+            android:id="@+id/img2"
             android:layout_width="100dp"
             android:layout_height="100dp"
             android:src="@drawable/kitchen"
@@ -44,7 +44,7 @@
             android:background="?selectableItemBackgroundBorderless" />
 
         <ImageView
-            android:id="@+id/imageOption3"
+            android:id="@+id/img3"
             android:layout_width="100dp"
             android:layout_height="100dp"
             android:src="@drawable/living_room"
@@ -53,7 +53,7 @@
             android:background="?selectableItemBackgroundBorderless" />
 
         <ImageView
-            android:id="@+id/imageOption4"
+            android:id="@+id/img4"
             android:layout_width="100dp"
             android:layout_height="100dp"
             android:src="@drawable/living_room_2"

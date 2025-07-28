@@ -10,20 +10,20 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.sensedata.R;
-import com.example.sensedata.model.RoomInfo;
+import com.example.sensedata.model.RoomWithSensorDto;
 
 import java.util.List;
 
 public class RoomAdapter extends RecyclerView.Adapter<RoomAdapter.RoomViewHolder> {
 
-    private final List<RoomInfo> roomList;
-    private final OnRoomClickListener listener;
-
     public interface OnRoomClickListener {
-        void onRoomClick(RoomInfo room);
+        void onRoomClick(RoomWithSensorDto room);
     }
 
-    public RoomAdapter(List<RoomInfo> roomList, OnRoomClickListener listener) {
+    private final List<RoomWithSensorDto> roomList;
+    private final OnRoomClickListener listener;
+
+    public RoomAdapter(List<RoomWithSensorDto> roomList, OnRoomClickListener listener) {
         this.roomList = roomList;
         this.listener = listener;
     }
@@ -31,19 +31,15 @@ public class RoomAdapter extends RecyclerView.Adapter<RoomAdapter.RoomViewHolder
     @NonNull
     @Override
     public RoomViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_room_chip, parent, false);
+        View view = LayoutInflater.from(parent.getContext())
+                .inflate(R.layout.item_room_chip, parent, false);
         return new RoomViewHolder(view);
     }
 
     @Override
     public void onBindViewHolder(@NonNull RoomViewHolder holder, int position) {
-        RoomInfo room = roomList.get(position);
-        holder.textRoom.setText(room.name);
-        holder.textTemperature.setText("🌡 " + room.temperature);
-        holder.textHumidity.setText("💧 " + room.humidity);
-        holder.roomImage.setImageResource(room.imageResId);
-
-        holder.itemView.setOnClickListener(v -> listener.onRoomClick(room));
+        RoomWithSensorDto room = roomList.get(position);
+        holder.bind(room, listener);
     }
 
     @Override
@@ -52,15 +48,36 @@ public class RoomAdapter extends RecyclerView.Adapter<RoomAdapter.RoomViewHolder
     }
 
     static class RoomViewHolder extends RecyclerView.ViewHolder {
-        TextView textRoom, textTemperature, textHumidity;
-        ImageView roomImage;
+        private final TextView textRoomName, textTemp, textHumidity;
+        private final ImageView imageRoom;
 
         public RoomViewHolder(@NonNull View itemView) {
             super(itemView);
-            textRoom = itemView.findViewById(R.id.textRoom);
-            textTemperature = itemView.findViewById(R.id.textTemperature);
+            textRoomName = itemView.findViewById(R.id.textRoom);
+            textTemp = itemView.findViewById(R.id.textTemperature);
             textHumidity = itemView.findViewById(R.id.textHumidity);
-            roomImage = itemView.findViewById(R.id.roomImage);
+            imageRoom = itemView.findViewById(R.id.roomImage);
+        }
+
+        public void bind(RoomWithSensorDto room, OnRoomClickListener listener) {
+            textRoomName.setText(room.name);
+            textTemp.setText("🌡 Темп: " + (room.temperature != null ? room.temperature + " °C" : "--"));
+            textHumidity.setText("💧 Волога: " + (room.humidity != null ? room.humidity + " %" : "--"));
+
+            int imageResId = getImageResId(room.imageName);
+            imageRoom.setImageResource(imageResId);
+
+            itemView.setOnClickListener(v -> listener.onRoomClick(room));
+        }
+
+        private int getImageResId(String imageName) {
+            switch (imageName) {
+                case "kitchen": return R.drawable.kitchen;
+                case "living_room": return R.drawable.living_room;
+                case "livingroom": return R.drawable.livingroom;
+                case "living_room_2": return R.drawable.living_room_2;
+                default: return R.drawable.living_room;
+            }
         }
     }
 }
