@@ -60,5 +60,19 @@
             android:padding="4dp"
             android:clickable="true"
             android:background="?selectableItemBackgroundBorderless" />
+
+        <EditText
+            android:id="@+id/editSsid"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Wi-Fi SSID" />
+
+        <EditText
+            android:id="@+id/editPassword"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Wi-Fi Password"
+            android:inputType="textPassword" />
+
     </GridLayout>
 </LinearLayout>
