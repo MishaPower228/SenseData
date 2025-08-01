@@ -2,10 +2,12 @@ package com.example.sensedata;
 
 import android.Manifest;
 import android.bluetooth.*;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.util.Base64;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -35,9 +37,13 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+
+import javax.crypto.Cipher;
+import javax.crypto.spec.SecretKeySpec;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -46,19 +52,19 @@ import retrofit2.Response;
 public class MainActivity extends AppCompatActivity {
 
     private FusedLocationProviderClient fusedLocationClient;
-    private static final int LOCATION_PERMISSION_REQUEST_CODE = 100;
+    private final int LOCATION_PERMISSION_REQUEST_CODE = 100;
+    private final Handler weatherHandler = new Handler();
+    private final int UPDATE_INTERVAL = 10 * 60 * 1000;
 
     private TextView textCity, textMain, textDescription, textTemp, textFeels, textHumidity, textPressure;
     private ImageView imageWeatherIcon;
+    private RecyclerView roomRecyclerView;
 
     private BluetoothGatt bluetoothGatt;
     private BluetoothGattCharacteristic writeCharacteristic;
 
-    private RecyclerView roomRecyclerView;
     private RoomAdapter roomAdapter;
     private final List<RoomWithSensorDto> roomList = new ArrayList<>();
-    private final Handler weatherHandler = new Handler();
-    private final int UPDATE_INTERVAL = 10 * 60 * 1000; // 10 хв
 
     private final Runnable weatherUpdater = new Runnable() {
         @Override
@@ -79,133 +85,70 @@ public class MainActivity extends AppCompatActivity {
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
         setupWeatherUI();
+        weatherUpdater.run();
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             ActivityCompat.requestPermissions(this,
-                    new String[]{
-                            Manifest.permission.BLUETOOTH_CONNECT,
-                            Manifest.permission.BLUETOOTH_SCAN
-                    },
-                    200);
+                    new String[]{Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_SCAN}, 200);
         }
-        
+
         roomRecyclerView = findViewById(R.id.room_recycler_view);
         roomAdapter = new RoomAdapter(roomList, room -> {});
         roomRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         roomRecyclerView.setAdapter(roomAdapter);
 
         loadRoomsFromServer();
-        weatherUpdater.run();
     }
 
-    private void createRoomOnServer(String roomName, String imageName, String ssid, String password) {
-        RoomRequest request = new RoomRequest(roomName, imageName);
-        RoomApiService apiService = ApiClient.getClient().create(RoomApiService.class);
-
-        apiService.createRoom(request).enqueue(new Callback<RoomWithSensorDto>() {
-            @Override
-            public void onResponse(Call<RoomWithSensorDto> call, Response<RoomWithSensorDto> response) {
-                if (response.isSuccessful() && response.body() != null) {
-                    RoomWithSensorDto newRoom = response.body();
-                    Toast.makeText(MainActivity.this, "Кімната створена: " + newRoom.name, Toast.LENGTH_SHORT).show();
-                    sendConfigOverBLE(newRoom.id, ssid, password);
-                } else {
-                    Toast.makeText(MainActivity.this, "Не вдалося створити кімнату", Toast.LENGTH_SHORT).show();
-                }
-            }
-
-            @Override
-            public void onFailure(Call<RoomWithSensorDto> call, Throwable t) {
-                Toast.makeText(MainActivity.this, "Помилка з’єднання", Toast.LENGTH_SHORT).show();
-            }
-        });
-    }
-
-    private void initBLEConnection(BluetoothDevice device) {
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
-            Toast.makeText(this, "Немає дозволу на Bluetooth", Toast.LENGTH_SHORT).show();
-            // 👉 або запросити дозвіл тут вручну
-            return;
-        }
-
-        bluetoothGatt = device.connectGatt(this, false, new BluetoothGattCallback() {
-
-            @Override
-            public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
-                if (newState == BluetoothProfile.STATE_CONNECTED) {
-                    if (ActivityCompat.checkSelfPermission(MainActivity.this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
-                        return;
-                    }
-                    gatt.discoverServices();
-                }
-            }
-
-            @Override
-            public void onServicesDiscovered(BluetoothGatt gatt, int status) {
-                if (ActivityCompat.checkSelfPermission(MainActivity.this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
-                    return;
-                }
-
-                BluetoothGattService service = gatt.getService(UUID.fromString("12345678-1234-1234-1234-123456789abc"));
-                if (service != null) {
-                    writeCharacteristic = service.getCharacteristic(UUID.fromString("abcd1234-5678-1234-5678-abcdef123456"));
-                }
-            }
-        });
-    }
-    private void sendConfigOverBLE(int roomId, String ssid, String password) {
+    private void sendConfigOverBLE(int roomId, String roomName, String imageName, String ssid, String password) {
         if (writeCharacteristic == null || bluetoothGatt == null) {
             Toast.makeText(this, "BLE не готовий", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // 🔐 Перевірка дозволу на Bluetooth для Android 12+
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
-            Toast.makeText(this, "Немає дозволу на Bluetooth", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "❌ Немає дозволу на Bluetooth", Toast.LENGTH_SHORT).show();
             return;
         }
+
+        SharedPreferences prefs = getSharedPreferences("MyAppPrefs", MODE_PRIVATE);
+        String username = prefs.getString("username", "default_user");
+
+        String encryptedPassword = encryptPassword(password);
 
         try {
             JSONObject json = new JSONObject();
             json.put("roomId", roomId);
+            json.put("roomName", roomName);
+            json.put("imageName", imageName);
             json.put("ssid", ssid);
-            json.put("password", password);
+            json.put("password", encryptedPassword);
+            json.put("username", username);
 
             byte[] jsonBytes = json.toString().getBytes(StandardCharsets.UTF_8);
             writeCharacteristic.setValue(jsonBytes);
 
+            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) return;
             boolean success = bluetoothGatt.writeCharacteristic(writeCharacteristic);
 
-            if (success) {
-                Toast.makeText(this, "Надіслано BLE JSON", Toast.LENGTH_SHORT).show();
-            } else {
-                Toast.makeText(this, "Помилка запису в BLE", Toast.LENGTH_SHORT).show();
-            }
-
+            Toast.makeText(this, success ? "✅ Надіслано BLE JSON" : "❌ BLE помилка", Toast.LENGTH_SHORT).show();
         } catch (JSONException e) {
             e.printStackTrace();
-            Toast.makeText(this, "Помилка формування JSON", Toast.LENGTH_SHORT).show();
         }
     }
 
-
-    private void loadRoomsFromServer() {
-        RoomApiService apiService = ApiClient.getClient().create(RoomApiService.class);
-        apiService.getAllRooms().enqueue(new Callback<List<RoomWithSensorDto>>() {
-            @Override
-            public void onResponse(Call<List<RoomWithSensorDto>> call, Response<List<RoomWithSensorDto>> response) {
-                if (response.isSuccessful() && response.body() != null) {
-                    roomList.clear();
-                    roomList.addAll(response.body());
-                    roomAdapter.notifyDataSetChanged();
-                }
-            }
-
-            @Override
-            public void onFailure(Call<List<RoomWithSensorDto>> call, Throwable t) {
-                Toast.makeText(MainActivity.this, "Помилка з’єднання при завантаженні кімнат", Toast.LENGTH_SHORT).show();
-            }
-        });
+    private String encryptPassword(String password) {
+        try {
+            String key = "my-secret-key-12";
+            SecretKeySpec secretKey = new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "AES");
+            Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
+            cipher.init(Cipher.ENCRYPT_MODE, secretKey);
+            byte[] encrypted = cipher.doFinal(password.getBytes(StandardCharsets.UTF_8));
+            return Base64.encodeToString(encrypted, Base64.NO_WRAP);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return password;
+        }
     }
 
     private void showCreateRoomDialog() {
@@ -218,14 +161,11 @@ public class MainActivity extends AppCompatActivity {
         EditText passwordInput = dialogView.findViewById(R.id.editPassword);
 
         ImageView[] imageViews = new ImageView[]{
-                dialogView.findViewById(R.id.img1),
-                dialogView.findViewById(R.id.img2),
-                dialogView.findViewById(R.id.img3),
-                dialogView.findViewById(R.id.img4)
+                dialogView.findViewById(R.id.img1), dialogView.findViewById(R.id.img2),
+                dialogView.findViewById(R.id.img3), dialogView.findViewById(R.id.img4)
         };
 
         final String[] selectedImage = {null};
-
         for (ImageView img : imageViews) {
             img.setOnClickListener(v -> selectedImage[0] = (String) v.getTag());
         }
@@ -247,6 +187,70 @@ public class MainActivity extends AppCompatActivity {
         builder.show();
     }
 
+    private void createRoomOnServer(String roomName, String imageName, String ssid, String password) {
+        RoomRequest request = new RoomRequest(roomName, imageName);
+        RoomApiService apiService = ApiClient.getClient().create(RoomApiService.class);
+
+        apiService.createRoom(request).enqueue(new Callback<RoomWithSensorDto>() {
+            @Override
+            public void onResponse(Call<RoomWithSensorDto> call, Response<RoomWithSensorDto> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    RoomWithSensorDto newRoom = response.body();
+                    sendConfigOverBLE(newRoom.id, newRoom.name, newRoom.imageName, ssid, password);
+                } else {
+                    Toast.makeText(MainActivity.this, "Помилка створення кімнати", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<RoomWithSensorDto> call, Throwable t) {
+                Toast.makeText(MainActivity.this, "❌ Сервер недоступний", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void fetchLocationAndWeather() {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, LOCATION_PERMISSION_REQUEST_CODE);
+            return;
+        }
+
+        fusedLocationClient.getLastLocation().addOnSuccessListener(this, location -> {
+            if (location != null) {
+                fetchWeatherByCoordinates(location.getLatitude(), location.getLongitude());
+            } else {
+                fetchWeatherByCoordinates(50.45, 30.52);
+            }
+        });
+    }
+
+    private void fetchWeatherByCoordinates(double lat, double lon) {
+        WeatherApiService apiService = ApiClient.getClient().create(WeatherApiService.class);
+        Call<WeatherResponse> call = apiService.getWeatherByCoordinates(lat, lon, "API_KEY", "metric");
+
+        call.enqueue(new Callback<WeatherResponse>() {
+            @Override
+            public void onResponse(Call<WeatherResponse> call, Response<WeatherResponse> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    WeatherResponse weather = response.body();
+                    textCity.setText("Місто: " + weather.cityName);
+                    textMain.setText("Погода: " + weather.weather.get(0).main);
+                    textDescription.setText("Опис: " + weather.weather.get(0).description);
+                    textTemp.setText("🌡 Температура: " + weather.main.temp + "°C");
+                    textFeels.setText("Відчувається як: " + weather.main.feelsLike + "°C");
+                    textHumidity.setText("💧 Вологість: " + weather.main.humidity + "%");
+                    textPressure.setText("🗭 Тиск: " + weather.main.pressure + " гПа");
+                    Picasso.get().load("https://openweathermap.org/img/wn/" + weather.weather.get(0).icon + "@2x.png").into(imageWeatherIcon);
+                }
+            }
+
+            @Override
+            public void onFailure(Call<WeatherResponse> call, Throwable t) {
+                Toast.makeText(MainActivity.this, "Помилка погоди: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
     private void setupWeatherUI() {
         textCity = findViewById(R.id.textWeatherCity);
         textMain = findViewById(R.id.textWeatherMain);
@@ -258,50 +262,21 @@ public class MainActivity extends AppCompatActivity {
         imageWeatherIcon = findViewById(R.id.imageWeatherIcon);
     }
 
-    private void fetchLocationAndWeather() {
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
-                ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-
-            ActivityCompat.requestPermissions(this,
-                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION},
-                    LOCATION_PERMISSION_REQUEST_CODE);
-            return;
-        }
-
-        fusedLocationClient.getLastLocation().addOnSuccessListener(this, location -> {
-            if (location != null) {
-                fetchWeatherByCoordinates(location.getLatitude(), location.getLongitude());
-            } else {
-                fetchWeatherByCoordinates(50.45, 30.52); // Київ
-            }
-        });
-    }
-
-    private void fetchWeatherByCoordinates(double lat, double lon) {
-        WeatherApiService apiService = ApiClient.getClient().create(WeatherApiService.class);
-        Call<WeatherResponse> call = apiService.getWeatherByCoordinates(lat, lon, "2ef0e3c8a248cd6859d19fd7e7e2b04f", "metric");
-
-        call.enqueue(new Callback<WeatherResponse>() {
+    private void loadRoomsFromServer() {
+        RoomApiService apiService = ApiClient.getClient().create(RoomApiService.class);
+        apiService.getAllRooms().enqueue(new Callback<List<RoomWithSensorDto>>() {
             @Override
-            public void onResponse(Call<WeatherResponse> call, Response<WeatherResponse> response) {
+            public void onResponse(Call<List<RoomWithSensorDto>> call, Response<List<RoomWithSensorDto>> response) {
                 if (response.isSuccessful() && response.body() != null) {
-                    WeatherResponse weather = response.body();
-                    textCity.setText("Місто: " + weather.cityName);
-                    textMain.setText("Погода: " + weather.weather.get(0).main);
-                    textDescription.setText("Опис: " + weather.weather.get(0).description);
-                    textTemp.setText("\uD83C\uDF21 Температура: " + weather.main.temp + "°C");
-                    textFeels.setText("Відчувається як: " + weather.main.feelsLike + "°C");
-                    textHumidity.setText("💧 Вологість: " + weather.main.humidity + "%");
-                    textPressure.setText("🗭 Тиск: " + weather.main.pressure + " гПа");
-
-                    String iconUrl = "https://openweathermap.org/img/wn/" + weather.weather.get(0).icon + "@2x.png";
-                    Picasso.get().load(iconUrl).into(imageWeatherIcon);
+                    roomList.clear();
+                    roomList.addAll(response.body());
+                    roomAdapter.notifyDataSetChanged();
                 }
             }
 
             @Override
-            public void onFailure(Call<WeatherResponse> call, Throwable t) {
-                Toast.makeText(MainActivity.this, "Помилка підключення: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            public void onFailure(Call<List<RoomWithSensorDto>> call, Throwable t) {
+                Toast.makeText(MainActivity.this, "Помилка при завантаженні кімнат", Toast.LENGTH_SHORT).show();
             }
         });
     }
