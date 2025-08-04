@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#f4f6fa">
+
+    <LinearLayout
+        android:id="@+id/registerCard"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp"
+        android:layout_margin="16dp"
+        android:background="@drawable/bg_dialog_rounded"
+        android:elevation="6dp"
+        android:gravity="center_horizontal">
+
+        <!-- 🔷 Логотип -->
+        <ImageView
+            android:id="@+id/logoImage"
+            android:layout_width="100dp"
+            android:layout_height="100dp"
+            android:src="@drawable/ic_user"
+            android:layout_marginBottom="16dp"
+            android:contentDescription="App Logo" />
+
+        <!-- Заголовок -->
+        <TextView
+            android:id="@+id/registerTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Реєстрація"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:textColor="@color/weather_card_text"
+            android:layout_marginBottom="24dp" />
+
+        <!-- Ім’я користувача -->
+        <EditText
+            android:id="@+id/editTextUsername"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Ім'я користувача"
+            android:textColorHint="@color/weather_card_text"
+            android:textColor="@color/weather_card_text"
+            android:inputType="textPersonName"
+            android:background="@drawable/bg_edittext"
+            android:padding="12dp" />
+
+        <!-- Email -->
+        <EditText
+            android:id="@+id/editTextEmail"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Email"
+            android:textColorHint="@color/weather_card_text"
+            android:textColor="@color/weather_card_text"
+            android:inputType="textEmailAddress"
+            android:background="@drawable/bg_edittext"
+            android:padding="12dp"
+            android:layout_marginTop="12dp" />
+
+        <!-- Пароль -->
+        <EditText
+            android:id="@+id/editTextPassword"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Пароль"
+            android:textColorHint="@color/weather_card_text"
+            android:textColor="@color/weather_card_text"
+            android:inputType="textPassword"
+            android:background="@drawable/bg_edittext"
+            android:padding="12dp"
+            android:layout_marginTop="12dp" />
+
+        <!-- Підтвердження паролю -->
+        <EditText
+            android:id="@+id/editTextConfirmPassword"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Підтвердіть пароль"
+            android:textColorHint="@color/weather_card_text"
+            android:textColor="@color/weather_card_text"
+            android:inputType="textPassword"
+            android:background="@drawable/bg_edittext"
+            android:padding="12dp"
+            android:layout_marginTop="12dp" />
+
+        <!-- Показати пароль -->
+        <CheckBox
+            android:id="@+id/checkboxShowPassword"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Показати пароль"
+            android:textColor="@color/weather_card_text"
+            android:layout_marginTop="10dp" />
+
+        <!-- Кнопка -->
+        <Button
+            android:id="@+id/buttonRegister"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Зареєструватися"
+            android:layout_marginTop="20dp"
+            android:backgroundTint="#2196F3"
+            android:textColor="#ffffff" />
+
+        <!-- Посилання -->
+        <TextView
+            android:id="@+id/textLoginLink"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Вже є акаунт? Увійти"
+            android:textColor="#2196F3"
+            android:layout_marginTop="16dp" />
+
+    </LinearLayout>
+</ScrollView>

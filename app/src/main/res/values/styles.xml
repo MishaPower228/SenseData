@@ -4,7 +4,11 @@
         <item name="cornerFamily">rounded</item>
         <item name="cornerSize">25dp</item>
     </style>
-    <style name="RoundedDialog" parent="Theme.MaterialComponents.DayNight.Dialog.Alert">
-        <item name="android:background">@drawable/bg_dialog_rounded</item>
+    <style name="RoundedDialog" parent="Theme.MaterialComponents.Light.Dialog">
+        <!-- 🔵 НЕ прозорий фон! Використовуємо відразу закруглений фон -->
+        <item name="android:windowBackground">@color/bg_weather_card</item>
+        <item name="android:backgroundDimEnabled">true</item>
+        <item name="android:windowMinWidthMajor">90%</item>
+        <item name="android:windowMinWidthMinor">90%</item>
     </style>
 </resources>

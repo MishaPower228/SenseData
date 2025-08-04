@@ -3,7 +3,7 @@ package com.example.sensedata.network;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
-public class ApiClient {
+public class ApiClientWeather {
 
     private static final String BASE_URL = "https://api.openweathermap.org/data/2.5/";
 

@@ -1,78 +1,216 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:orientation="vertical"
-    android:padding="16dp"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content">
+    android:layout_height="wrap_content"
+    android:background="@color/background_color"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:padding="1dp">
 
-    <EditText
-        android:id="@+id/editRoomName"
+    <LinearLayout
+        android:id="@+id/createRoomCard"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Назва кімнати"
-        android:inputType="textCapWords" />
+        android:orientation="vertical"
+        android:layout_margin="16dp"
+        android:padding="24dp"
+        android:elevation="6dp"
+        android:gravity="center">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Оберіть зображення:"
-        android:layout_marginTop="12dp" />
+        <!-- Заголовок -->
+        <TextView
+            android:id="@+id/titleText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Створити кімнату"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:textColor="@color/weather_card_text"
+            android:layout_marginBottom="16dp" />
 
-    <GridLayout
-        android:id="@+id/imageSelectionGrid"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:columnCount="2"
-        android:layout_marginTop="8dp">
-
-        <ImageView
-            android:id="@+id/img1"
-            android:layout_width="100dp"
-            android:layout_height="100dp"
-            android:src="@drawable/livingroom"
-            android:padding="4dp"
-            android:clickable="true"
-            android:background="?selectableItemBackgroundBorderless" />
-
-        <ImageView
-            android:id="@+id/img2"
-            android:layout_width="100dp"
-            android:layout_height="100dp"
-            android:src="@drawable/kitchen"
-            android:padding="4dp"
-            android:clickable="true"
-            android:background="?selectableItemBackgroundBorderless" />
-
-        <ImageView
-            android:id="@+id/img3"
-            android:layout_width="100dp"
-            android:layout_height="100dp"
-            android:src="@drawable/living_room"
-            android:padding="4dp"
-            android:clickable="true"
-            android:background="?selectableItemBackgroundBorderless" />
-
-        <ImageView
-            android:id="@+id/img4"
-            android:layout_width="100dp"
-            android:layout_height="100dp"
-            android:src="@drawable/living_room_2"
-            android:padding="4dp"
-            android:clickable="true"
-            android:background="?selectableItemBackgroundBorderless" />
-
+        <!-- Назва кімнати -->
         <EditText
-            android:id="@+id/editSsid"
+            android:id="@+id/editRoomName"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Wi-Fi SSID" />
+            android:hint="Назва кімнати"
+            android:textColorHint="@color/weather_card_text"
+            android:inputType="textCapWords"
+            android:textColor="@color/weather_card_text"
+            android:background="@drawable/bg_edittext"
+            android:padding="12dp"
+            android:layout_marginBottom="16dp" />
 
-        <EditText
-            android:id="@+id/editPassword"
+        <!-- Підпис до вибору зображення -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Оберіть зображення:"
+            android:textColor="@color/weather_card_text"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Сітка зображень -->
+
+        <!-- Wi-Fi блок -->
+        <GridLayout
+            android:id="@+id/imageSelectionGrid"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Wi-Fi Password"
-            android:inputType="textPassword" />
+            android:columnCount="2"
+            android:layout_marginTop="8dp"
+            android:alignmentMode="alignMargins"
+            android:columnOrderPreserved="false"
+            android:useDefaultMargins="true"
+            android:gravity="center_horizontal">
 
-    </GridLayout>
-</LinearLayout>
+            <FrameLayout
+                android:id="@+id/container1"
+                android:layout_width="0dp"
+                android:layout_height="140dp"
+                android:layout_columnWeight="1"
+                android:layout_rowWeight="1"
+                android:layout_column="0"
+                android:layout_gravity="fill"
+                android:background="@drawable/bg_image_selector">
+
+                <ImageView
+                    android:id="@+id/img1"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="centerCrop"
+                    android:src="@drawable/livingroom"
+                    android:contentDescription="livingroom"
+                    android:tag="livingroom" />
+            </FrameLayout>
+
+            <FrameLayout
+                android:id="@+id/container2"
+                android:layout_width="0dp"
+                android:layout_height="140dp"
+                android:layout_columnWeight="1"
+                android:layout_rowWeight="1"
+                android:layout_column="1"
+                android:layout_gravity="fill"
+                android:background="@drawable/bg_image_selector">
+
+                <ImageView
+                    android:id="@+id/img2"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="centerCrop"
+                    android:src="@drawable/kitchen"
+                    android:contentDescription="kitchen"
+                    android:tag="kitchen" />
+            </FrameLayout>
+
+            <FrameLayout
+                android:id="@+id/container3"
+                android:layout_width="0dp"
+                android:layout_height="140dp"
+                android:layout_columnWeight="1"
+                android:layout_rowWeight="1"
+                android:layout_column="0"
+                android:layout_gravity="fill"
+                android:background="@drawable/bg_image_selector">
+
+                <ImageView
+                    android:id="@+id/img3"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="centerCrop"
+                    android:src="@drawable/living_room"
+                    android:contentDescription="living_room"
+                    android:tag="living_room" />
+            </FrameLayout>
+
+            <FrameLayout
+                android:id="@+id/container4"
+                android:layout_width="0dp"
+                android:layout_height="140dp"
+                android:layout_columnWeight="1"
+                android:layout_rowWeight="1"
+                android:layout_column="1"
+                android:layout_gravity="fill"
+                android:background="@drawable/bg_image_selector">
+
+                <ImageView
+                    android:id="@+id/img4"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="centerCrop"
+                    android:src="@drawable/living_room_2"
+                    android:contentDescription="living_room_2"
+                    android:tag="living_room_2" />
+            </FrameLayout>
+
+        </GridLayout>
+
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_wifi_block"
+            android:padding="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Налаштування Wi-Fi"
+                android:textColor="@color/weather_card_text"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="12dp" />
+
+            <!-- SSID -->
+            <EditText
+                android:id="@+id/editSsid"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Wi-Fi SSID"
+                android:textColorHint="@color/weather_card_text"
+                android:textColor="@color/weather_card_text"
+                android:inputType="text"
+                android:background="@drawable/bg_edittext"
+                android:padding="12dp"
+                android:layout_marginBottom="12dp" />
+
+            <!-- Пароль -->
+            <EditText
+                android:id="@+id/editPassword"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Wi-Fi Пароль"
+                android:textColorHint="@color/weather_card_text"
+                android:textColor="@color/weather_card_text"
+                android:inputType="textPassword"
+                android:background="@drawable/bg_edittext"
+                android:padding="12dp" />
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/dialogButtonsLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="end"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="8dp">
+
+            <Button
+                android:id="@+id/btnCancel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Скасувати"
+                android:textColor="@color/weather_card_text"
+                android:background="@drawable/bg_chip_rounded"
+                android:layout_marginEnd="16dp" />
+
+            <Button
+                android:id="@+id/btnCreate"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Створити"
+                android:textColor="@color/weather_card_text"
+                android:background="@drawable/bg_chip_rounded" />
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>
