@@ -186,6 +186,20 @@
                 android:background="@drawable/bg_edittext"
                 android:padding="12dp" />
         </LinearLayout>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Оберіть плату ESP32:"
+            android:textColor="@color/weather_card_text"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="8dp"/>
+
+        <Spinner
+            android:id="@+id/spinnerDevices"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:backgroundTint="@color/weather_card_text"
+            android:spinnerMode="dropdown"/>
         <LinearLayout
             android:id="@+id/dialogButtonsLayout"
             android:layout_width="match_parent"
