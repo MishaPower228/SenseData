@@ -71,10 +71,11 @@ public class MainActivity extends AppCompatActivity {
         weatherManager.startWeatherUpdates();
 
         FloatingActionButton fab = findViewById(R.id.fab_add_room);
-        fab.setOnClickListener(v -> bleManager.startBleScanForSelection());
+        fab.setOnClickListener(v -> showCreateRoomDialog());
 
         roomRecyclerView = findViewById(R.id.room_recycler_view);
-        roomAdapter = new RoomAdapter(roomList, room -> {});
+        roomAdapter = new RoomAdapter(roomList, room -> {
+        });
         roomRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         roomRecyclerView.setAdapter(roomAdapter);
 
@@ -125,7 +126,8 @@ public class MainActivity extends AppCompatActivity {
             public void onResponse(Call<RoomWithSensorDto> call, Response<RoomWithSensorDto> response) {
                 if (response.isSuccessful() && response.body() != null) {
                     RoomWithSensorDto newRoom = response.body();
-                    bleManager.sendConfigToEsp32(
+                    bleManager.sendConfigToEsp32ViaDevice(
+                            bleManager.getSelectedDevice(),
                             newRoom.name,
                             newRoom.imageName,
                             ssid,
@@ -174,24 +176,44 @@ public class MainActivity extends AppCompatActivity {
         };
 
         final String[] selectedImage = {null};
-        Animation clickAnim = AnimationUtils.loadAnimation(this, R.anim.image_click);
+        final int[] selectedIndex = {-1}; // -1 означає нічого не вибрано
 
         for (int i = 0; i < imageViews.length; i++) {
             final int index = i;
             imageViews[i].setOnClickListener(v -> {
-                v.startAnimation(clickAnim);
-                for (FrameLayout container : containers) {
-                    container.setBackgroundResource(R.drawable.bg_image_selector);
+                // Повторне натискання — скасувати виділення
+                if (selectedIndex[0] == index) {
+                    containers[index].setBackgroundResource(R.drawable.bg_image_selector);
+                    v.setScaleX(1.0f); // Повернути до нормального розміру
+                    v.setScaleY(1.0f);
+                    selectedIndex[0] = -1;
+                    selectedImage[0] = null;
+                    return;
                 }
+
+                // Очистити всі рамки та масштаб
+                for (int j = 0; j < containers.length; j++) {
+                    containers[j].setBackgroundResource(R.drawable.bg_image_selector);
+                    imageViews[j].setScaleX(1.0f);
+                    imageViews[j].setScaleY(1.0f);
+                }
+
+                // Виділити поточне
                 containers[index].setBackgroundResource(R.drawable.bg_image_selected);
+                v.setScaleX(0.95f); // Зменшити масштаб
+                v.setScaleY(0.95f);
+
+                selectedIndex[0] = index;
                 selectedImage[0] = (String) v.getTag();
             });
         }
 
-        // BLE-список
+
+        // Адаптер для BLE-пристроїв
         ArrayAdapter<String> deviceAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, new ArrayList<>());
         deviceSpinner.setAdapter(deviceAdapter);
 
+        // BLE-сканування при натисканні на Spinner
         deviceSpinner.setOnTouchListener((v, event) -> {
             bleManager.startBleScan((deviceNames, devices) -> runOnUiThread(() -> {
                 deviceAdapter.clear();
@@ -201,6 +223,7 @@ public class MainActivity extends AppCompatActivity {
             return false;
         });
 
+        // Вибір пристрою з Spinner
         deviceSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
@@ -208,7 +231,8 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onNothingSelected(AdapterView<?> parent) { }
+            public void onNothingSelected(AdapterView<?> parent) {
+            }
         });
 
         // Обробка кнопок
