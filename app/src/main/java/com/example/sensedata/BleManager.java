@@ -238,9 +238,9 @@ public class BleManager {
      */
     private String encryptPassword(String password) {
         try {
-            String key = "my-secret-key-12";
+            String key = "my-secret-key-12"; // 16 символів
             SecretKeySpec secretKey = new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "AES");
-            Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
+            Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding"); // PKCS5 = PKCS7 по суті
             cipher.init(Cipher.ENCRYPT_MODE, secretKey);
             byte[] encrypted = cipher.doFinal(password.getBytes(StandardCharsets.UTF_8));
             return Base64.encodeToString(encrypted, Base64.NO_WRAP);

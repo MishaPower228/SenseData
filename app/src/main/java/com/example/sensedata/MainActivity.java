@@ -208,6 +208,11 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
 
+            if (!isAsciiOnly(password)) {
+                Toast.makeText(this, "Пароль повинен містити лише англійські символи", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
             BluetoothDevice device = bleManager.getSelectedDevice();
             if (device == null) {
                 Toast.makeText(this, "Оберіть ESP32-плату", Toast.LENGTH_SHORT).show();
@@ -240,5 +245,8 @@ public class MainActivity extends AppCompatActivity {
 
         dialog.setCancelable(false);
         dialog.show();
+    }
+    private boolean isAsciiOnly(String input) {
+        return input.matches("\\A\\p{ASCII}*\\z");
     }
 }
