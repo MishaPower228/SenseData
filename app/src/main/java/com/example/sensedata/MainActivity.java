@@ -6,19 +6,8 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.view.LayoutInflater;
 import android.view.View;
-import android.view.animation.Animation;
-import android.view.animation.AnimationUtils;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.FrameLayout;
-import android.widget.ImageView;
-import android.widget.Spinner;
-import android.widget.TextView;
-import android.widget.Toast;
+import android.widget.*;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AlertDialog;
@@ -32,9 +21,11 @@ import com.example.sensedata.model.RoomRequest;
 import com.example.sensedata.model.RoomWithSensorDto;
 import com.example.sensedata.network.ApiClientWeather;
 import com.example.sensedata.network.RoomApiService;
-import com.example.sensedata.BleManager;
-import com.example.sensedata.WeatherManager;
+import com.google.android.material.checkbox.MaterialCheckBox;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -47,7 +38,6 @@ public class MainActivity extends AppCompatActivity {
 
     private WeatherManager weatherManager;
     private BleManager bleManager;
-
     private RecyclerView roomRecyclerView;
     private RoomAdapter roomAdapter;
     private final List<RoomWithSensorDto> roomList = new ArrayList<>();
@@ -69,6 +59,14 @@ public class MainActivity extends AppCompatActivity {
         bleManager = new BleManager(this);
         weatherManager = new WeatherManager(this);
         weatherManager.startWeatherUpdates();
+
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED ||
+                ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{
+                    Manifest.permission.BLUETOOTH_SCAN,
+                    Manifest.permission.BLUETOOTH_CONNECT
+            }, 1001);
+        }
 
         FloatingActionButton fab = findViewById(R.id.fab_add_room);
         fab.setOnClickListener(v -> showCreateRoomDialog());
@@ -110,46 +108,7 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    public void createRoomOnServer(String roomName, String imageName, String ssid, String password) {
-        SharedPreferences prefs = getSharedPreferences("MyAppPrefs", MODE_PRIVATE);
-        String username = prefs.getString("username", null);
-        if (username == null) {
-            Toast.makeText(this, "Користувач не знайдений", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        RoomRequest request = new RoomRequest(roomName, imageName);
-        RoomApiService apiService = ApiClientWeather.getClient().create(RoomApiService.class);
-
-        apiService.createRoom(request).enqueue(new Callback<RoomWithSensorDto>() {
-            @Override
-            public void onResponse(Call<RoomWithSensorDto> call, Response<RoomWithSensorDto> response) {
-                if (response.isSuccessful() && response.body() != null) {
-                    RoomWithSensorDto newRoom = response.body();
-                    bleManager.sendConfigToEsp32ViaDevice(
-                            bleManager.getSelectedDevice(),
-                            newRoom.name,
-                            newRoom.imageName,
-                            ssid,
-                            password,
-                            username
-                    );
-                    roomList.add(newRoom);
-                    roomAdapter.notifyItemInserted(roomList.size() - 1);
-                    Toast.makeText(MainActivity.this, "Кімната створена", Toast.LENGTH_SHORT).show();
-                } else {
-                    Toast.makeText(MainActivity.this, "Помилка створення кімнати", Toast.LENGTH_SHORT).show();
-                }
-            }
-
-            @Override
-            public void onFailure(Call<RoomWithSensorDto> call, Throwable t) {
-                Toast.makeText(MainActivity.this, "Сервер недоступний", Toast.LENGTH_SHORT).show();
-            }
-        });
-    }
-
-    void showCreateRoomDialog() {
+    private void showCreateRoomDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_create_room, null);
         builder.setView(dialogView);
@@ -159,8 +118,39 @@ public class MainActivity extends AppCompatActivity {
         EditText ssidInput = dialogView.findViewById(R.id.editSsid);
         EditText passwordInput = dialogView.findViewById(R.id.editPassword);
         Spinner deviceSpinner = dialogView.findViewById(R.id.spinnerDevices);
+        MaterialCheckBox checkboxReset = dialogView.findViewById(R.id.checkboxReset);
+        Button btnScan = dialogView.findViewById(R.id.btnScanBle);
+        ProgressBar progressScan = dialogView.findViewById(R.id.progressScan);
 
-        // Ініціалізація картинок
+        ArrayAdapter<String> deviceAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, new ArrayList<>());
+        deviceSpinner.setAdapter(deviceAdapter);
+
+        btnScan.setOnClickListener(v -> {
+            progressScan.setVisibility(View.VISIBLE);
+            bleManager.startBleScan((deviceNames, devices) -> runOnUiThread(() -> {
+                deviceAdapter.clear();
+                deviceAdapter.addAll(deviceNames);
+                deviceAdapter.notifyDataSetChanged();
+                progressScan.setVisibility(View.GONE);
+
+                if (!deviceNames.isEmpty()) {
+                    deviceSpinner.setSelection(0);
+                    bleManager.setSelectedDevice(0);
+                }
+            }));
+        });
+
+        deviceSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                bleManager.setSelectedDevice(position);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+            }
+        });
+
         FrameLayout[] containers = {
                 dialogView.findViewById(R.id.container1),
                 dialogView.findViewById(R.id.container2),
@@ -176,31 +166,28 @@ public class MainActivity extends AppCompatActivity {
         };
 
         final String[] selectedImage = {null};
-        final int[] selectedIndex = {-1}; // -1 означає нічого не вибрано
+        final int[] selectedIndex = {-1};
 
         for (int i = 0; i < imageViews.length; i++) {
             final int index = i;
             imageViews[i].setOnClickListener(v -> {
-                // Повторне натискання — скасувати виділення
                 if (selectedIndex[0] == index) {
                     containers[index].setBackgroundResource(R.drawable.bg_image_selector);
-                    v.setScaleX(1.0f); // Повернути до нормального розміру
+                    v.setScaleX(1.0f);
                     v.setScaleY(1.0f);
                     selectedIndex[0] = -1;
                     selectedImage[0] = null;
                     return;
                 }
 
-                // Очистити всі рамки та масштаб
                 for (int j = 0; j < containers.length; j++) {
                     containers[j].setBackgroundResource(R.drawable.bg_image_selector);
                     imageViews[j].setScaleX(1.0f);
                     imageViews[j].setScaleY(1.0f);
                 }
 
-                // Виділити поточне
                 containers[index].setBackgroundResource(R.drawable.bg_image_selected);
-                v.setScaleX(0.95f); // Зменшити масштаб
+                v.setScaleX(0.95f);
                 v.setScaleY(0.95f);
 
                 selectedIndex[0] = index;
@@ -208,40 +195,13 @@ public class MainActivity extends AppCompatActivity {
             });
         }
 
-
-        // Адаптер для BLE-пристроїв
-        ArrayAdapter<String> deviceAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, new ArrayList<>());
-        deviceSpinner.setAdapter(deviceAdapter);
-
-        // BLE-сканування при натисканні на Spinner
-        deviceSpinner.setOnTouchListener((v, event) -> {
-            bleManager.startBleScan((deviceNames, devices) -> runOnUiThread(() -> {
-                deviceAdapter.clear();
-                deviceAdapter.addAll(deviceNames);
-                deviceAdapter.notifyDataSetChanged();
-            }));
-            return false;
-        });
-
-        // Вибір пристрою з Spinner
-        deviceSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                bleManager.setSelectedDevice(position);
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {
-            }
-        });
-
-        // Обробка кнопок
         dialogView.findViewById(R.id.btnCancel).setOnClickListener(v -> dialog.dismiss());
 
         dialogView.findViewById(R.id.btnCreate).setOnClickListener(v -> {
             String roomName = roomNameInput.getText().toString().trim();
             String ssid = ssidInput.getText().toString().trim();
             String password = passwordInput.getText().toString().trim();
+            boolean reset = checkboxReset.isChecked(); // ⬅️ обробка чекбокса
 
             if (roomName.isEmpty() || ssid.isEmpty() || password.isEmpty() || selectedImage[0] == null) {
                 Toast.makeText(this, "Заповніть всі поля", Toast.LENGTH_SHORT).show();
@@ -261,38 +221,21 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
 
-            // Створення кімнати та надсилання на ESP32
-            RoomRequest request = new RoomRequest(roomName, selectedImage[0]);
-            RoomApiService apiService = ApiClientWeather.getClient().create(RoomApiService.class);
+            // 🔹 Надсилаємо повну конфігурацію на ESP32 по BLE
+            bleManager.sendConfigToEsp32ViaDevice(device,
+                    roomName,
+                    selectedImage[0],
+                    ssid,
+                    password,
+                    username,
+                    reset); // ⬅️ передано прапорець reset
 
-            apiService.createRoom(request).enqueue(new Callback<RoomWithSensorDto>() {
-                @Override
-                public void onResponse(Call<RoomWithSensorDto> call, Response<RoomWithSensorDto> response) {
-                    if (response.isSuccessful() && response.body() != null) {
-                        RoomWithSensorDto newRoom = response.body();
-
-                        bleManager.sendConfigToEsp32ViaDevice(device,
-                                newRoom.name,
-                                newRoom.imageName,
-                                ssid,
-                                password,
-                                username
-                        );
-
-                        roomList.add(newRoom);
-                        roomAdapter.notifyItemInserted(roomList.size() - 1);
-                        Toast.makeText(MainActivity.this, "Кімната створена", Toast.LENGTH_SHORT).show();
-                        dialog.dismiss();
-                    } else {
-                        Toast.makeText(MainActivity.this, "Помилка створення кімнати", Toast.LENGTH_SHORT).show();
-                    }
-                }
-
-                @Override
-                public void onFailure(Call<RoomWithSensorDto> call, Throwable t) {
-                    Toast.makeText(MainActivity.this, "Сервер недоступний", Toast.LENGTH_SHORT).show();
-                }
-            });
+            // 🔹 Очікуємо, поки ESP32 зробить POST на Web API
+            new android.os.Handler().postDelayed(() -> {
+                loadRoomsFromServer(); // 🔄 Оновлення UI
+                dialog.dismiss();
+                Toast.makeText(this, "Конфігурація надіслана на ESP32", Toast.LENGTH_SHORT).show();
+            }, 4000);
         });
 
         dialog.setCancelable(false);

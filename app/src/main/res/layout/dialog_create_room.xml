@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:background="@color/background_color"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:padding="1dp">
 
     <LinearLayout
@@ -16,7 +16,6 @@
         android:elevation="6dp"
         android:gravity="center">
 
-        <!-- Заголовок -->
         <TextView
             android:id="@+id/titleText"
             android:layout_width="wrap_content"
@@ -27,20 +26,18 @@
             android:textColor="@color/weather_card_text"
             android:layout_marginBottom="16dp" />
 
-        <!-- Назва кімнати -->
         <EditText
             android:id="@+id/editRoomName"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:hint="Назва кімнати"
             android:textColorHint="@color/weather_card_text"
-            android:inputType="textCapWords"
             android:textColor="@color/weather_card_text"
+            android:inputType="textCapWords"
             android:background="@drawable/bg_edittext"
             android:padding="12dp"
             android:layout_marginBottom="16dp" />
 
-        <!-- Підпис до вибору зображення -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -49,8 +46,6 @@
             android:layout_marginBottom="8dp" />
 
         <!-- Сітка зображень -->
-
-        <!-- Wi-Fi блок -->
         <GridLayout
             android:id="@+id/imageSelectionGrid"
             android:layout_width="match_parent"
@@ -62,6 +57,7 @@
             android:useDefaultMargins="true"
             android:gravity="center_horizontal">
 
+            <!-- Зображення 1 -->
             <FrameLayout
                 android:id="@+id/container1"
                 android:layout_width="0dp"
@@ -71,7 +67,6 @@
                 android:layout_column="0"
                 android:layout_gravity="fill"
                 android:background="@drawable/bg_image_selector">
-
                 <ImageView
                     android:id="@+id/img1"
                     android:layout_width="match_parent"
@@ -82,6 +77,7 @@
                     android:tag="livingroom" />
             </FrameLayout>
 
+            <!-- Зображення 2 -->
             <FrameLayout
                 android:id="@+id/container2"
                 android:layout_width="0dp"
@@ -91,7 +87,6 @@
                 android:layout_column="1"
                 android:layout_gravity="fill"
                 android:background="@drawable/bg_image_selector">
-
                 <ImageView
                     android:id="@+id/img2"
                     android:layout_width="match_parent"
@@ -102,6 +97,7 @@
                     android:tag="kitchen" />
             </FrameLayout>
 
+            <!-- Зображення 3 -->
             <FrameLayout
                 android:id="@+id/container3"
                 android:layout_width="0dp"
@@ -111,7 +107,6 @@
                 android:layout_column="0"
                 android:layout_gravity="fill"
                 android:background="@drawable/bg_image_selector">
-
                 <ImageView
                     android:id="@+id/img3"
                     android:layout_width="match_parent"
@@ -122,6 +117,7 @@
                     android:tag="living_room" />
             </FrameLayout>
 
+            <!-- Зображення 4 -->
             <FrameLayout
                 android:id="@+id/container4"
                 android:layout_width="0dp"
@@ -131,7 +127,6 @@
                 android:layout_column="1"
                 android:layout_gravity="fill"
                 android:background="@drawable/bg_image_selector">
-
                 <ImageView
                     android:id="@+id/img4"
                     android:layout_width="match_parent"
@@ -141,10 +136,9 @@
                     android:contentDescription="living_room_2"
                     android:tag="living_room_2" />
             </FrameLayout>
-
         </GridLayout>
 
-
+        <!-- Блок Wi-Fi -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -161,7 +155,6 @@
                 android:textStyle="bold"
                 android:layout_marginBottom="12dp" />
 
-            <!-- SSID -->
             <EditText
                 android:id="@+id/editSsid"
                 android:layout_width="match_parent"
@@ -174,7 +167,6 @@
                 android:padding="12dp"
                 android:layout_marginBottom="12dp" />
 
-            <!-- Пароль -->
             <EditText
                 android:id="@+id/editPassword"
                 android:layout_width="match_parent"
@@ -186,6 +178,40 @@
                 android:background="@drawable/bg_edittext"
                 android:padding="12dp" />
         </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="8dp">
+
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/esp32_icon"
+                android:layout_marginEnd="8dp"
+                android:contentDescription="ESP32" />
+
+            <!-- ✅ FIXED: був TextView, тепер Button -->
+            <Button
+                android:id="@+id/btnScanBle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🔍 Сканувати ESP32"
+                android:textColor="@color/weather_card_text"
+                android:background="@drawable/bg_chip_rounded" />
+
+            <ProgressBar
+                android:id="@+id/progressScan"
+                style="?android:attr/progressBarStyleSmall"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:visibility="gone" />
+        </LinearLayout>
+
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -198,8 +224,23 @@
             android:id="@+id/spinnerDevices"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:backgroundTint="@color/weather_card_text"
-            android:spinnerMode="dropdown"/>
+            android:background="@drawable/bg_chip_rounded"
+            android:popupBackground="@color/background_color"
+            android:padding="12dp"
+            android:textAlignment="center"
+            android:spinnerMode="dropdown" />
+
+        <com.google.android.material.checkbox.MaterialCheckBox
+            android:id="@+id/checkboxReset"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Скинути пристрій перед збереженням"
+            android:textSize="16sp"
+            android:textColor="@color/weather_card_text"
+            android:buttonTint="@color/weather_card_text"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="8dp"/>
+
         <LinearLayout
             android:id="@+id/dialogButtonsLayout"
             android:layout_width="match_parent"

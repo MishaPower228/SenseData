@@ -90,10 +90,26 @@ public class BleManager {
             if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED)
                 return;
 
-            if (device != null && !foundDevices.contains(device)) {
-                foundDevices.add(device);
-                String name = (device.getName() != null) ? device.getName() : "ESP32";
-                foundDeviceNames.add(name);
+            if (device != null) {
+                String name = device.getName();
+                String address = device.getAddress();
+
+                // Ігноруємо, якщо ім’я не починається з ESP32_
+                if (name == null || !name.startsWith("ESP32_")) return;
+
+                // Перевірка, щоб MAC не дублювався
+                boolean alreadyAdded = false;
+                for (BluetoothDevice d : foundDevices) {
+                    if (d.getAddress().equals(address)) {
+                        alreadyAdded = true;
+                        break;
+                    }
+                }
+
+                if (!alreadyAdded) {
+                    foundDevices.add(device);
+                    foundDeviceNames.add(name); // Додай назву як є (ESP32_1234ABCD)
+                }
             }
         }
 
@@ -106,13 +122,23 @@ public class BleManager {
     /**
      * Надсилання конфігурації на ESP32.
      */
-    public void sendConfigToEsp32ViaDevice(BluetoothDevice device, String roomName, String imageName, String ssid, String password, String username) {
+    public void sendConfigToEsp32ViaDevice(BluetoothDevice device, String roomName, String imageName, String ssid, String password, String username, boolean reset) {
         if (device == null) {
             Toast.makeText(context, "BLE пристрій не вибрано", Toast.LENGTH_SHORT).show();
             return;
         }
 
         selectedDevice = device;
+
+        // ✅ Очистити попереднє з'єднання
+        if (bluetoothGatt != null) {
+            if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
+                bluetoothGatt.disconnect();
+                bluetoothGatt.close();
+            }
+            bluetoothGatt = null;
+            writeCharacteristic = null;
+        }
 
         // Перевірка дозволу
         if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
@@ -122,21 +148,15 @@ public class BleManager {
             return;
         }
 
-        // Підключення до пристрою
         bluetoothGatt = device.connectGatt(context, false, new BluetoothGattCallback() {
             @Override
             public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
                 if (newState == BluetoothProfile.STATE_CONNECTED) {
                     if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
                         gatt.discoverServices();
-                    } else {
-                        // (Опціонально) Запит дозволу, якщо контекст — Activity
-                        ActivityCompat.requestPermissions((Activity) context,
-                                new String[]{Manifest.permission.BLUETOOTH_CONNECT}, 101);
                     }
                 }
             }
-
 
             @Override
             public void onServicesDiscovered(BluetoothGatt gatt, int status) {
@@ -146,7 +166,7 @@ public class BleManager {
                     if (characteristic != null) {
                         writeCharacteristic = characteristic;
                         bluetoothGatt = gatt;
-                        sendConfigToEsp32(roomName, imageName, ssid, password, username);
+                        sendConfigToEsp32(roomName, imageName, ssid, password, username, reset);
                     }
                 } else {
                     Toast.makeText(context, "Сервіс ESP32 не знайдено", Toast.LENGTH_SHORT).show();
@@ -154,6 +174,7 @@ public class BleManager {
             }
         });
     }
+
 
     /**
      * Встановлення вибраного пристрою.
@@ -171,7 +192,7 @@ public class BleManager {
     /**
      * Відправлення JSON-конфігурації на ESP32.
      */
-    private void sendConfigToEsp32(String roomName, String imageName, String ssid, String password, String username) {
+    private void sendConfigToEsp32(String roomName, String imageName, String ssid, String password, String username, boolean reset) {
         if (writeCharacteristic == null || bluetoothGatt == null) {
             Toast.makeText(context, "BLE не готовий", Toast.LENGTH_SHORT).show();
             return;
@@ -186,6 +207,7 @@ public class BleManager {
             json.put("ssid", ssid);
             json.put("password", encryptedPassword);
             json.put("username", username);
+            json.put("reset", reset);
 
             writeCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
             writeCharacteristic.setValue(json.toString().getBytes(StandardCharsets.UTF_8));
@@ -193,12 +215,23 @@ public class BleManager {
             if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
                 boolean success = bluetoothGatt.writeCharacteristic(writeCharacteristic);
                 Toast.makeText(context, success ? "Дані надіслано ESP32" : "Помилка надсилання", Toast.LENGTH_SHORT).show();
+
+                // ✅ Відключення через 500 мс
+                new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                    if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
+                        bluetoothGatt.disconnect();
+                        bluetoothGatt.close();
+                        bluetoothGatt = null;
+                        writeCharacteristic = null;
+                    }
+                }, 500);
             }
 
         } catch (JSONException e) {
             e.printStackTrace();
         }
     }
+
 
     /**
      * Шифрування пароля (AES-128 ECB).
@@ -216,6 +249,25 @@ public class BleManager {
             return password;
         }
     }
+
+    public void sendRawJsonToEsp32(BluetoothDevice device, String jsonString) {
+        if (context.checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+            Log.e("BLE_RESET", "Немає дозволу BLUETOOTH_CONNECT");
+            return;
+        }
+
+        if (bluetoothGatt == null || writeCharacteristic == null) {
+            Log.e("BLE_RESET", "BLE не готовий для запису");
+            return;
+        }
+
+        writeCharacteristic.setValue(jsonString.getBytes(StandardCharsets.UTF_8));
+        writeCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
+        boolean success = bluetoothGatt.writeCharacteristic(writeCharacteristic);
+
+        Log.d("BLE_RESET", "Write success: " + success + ", Data: " + jsonString);
+    }
+
 
     /**
      * Перевірка необхідних BLE-дозволів.
