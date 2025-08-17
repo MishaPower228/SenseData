@@ -23,24 +23,25 @@ import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
 
 public class BleManager {
-
-    // ===== Контекст та BLE-компоненти =====
     private final Context context;
     private final BluetoothAdapter bluetoothAdapter;
     private final BluetoothLeScanner bleScanner;
 
-    // ===== UUID сервісу та характеристики ESP32 =====
     private final UUID SERVICE_UUID = UUID.fromString("12345678-1234-1234-1234-123456789abc");
     private final UUID CHARACTERISTIC_UUID = UUID.fromString("abcd1234-5678-1234-5678-abcdef123456");
 
-    // ===== Списки знайдених пристроїв =====
     private final List<BluetoothDevice> foundDevices = new ArrayList<>();
     private final List<String> foundDeviceNames = new ArrayList<>();
 
-    // ===== Поточне з'єднання =====
     private BluetoothGatt bluetoothGatt;
     private BluetoothGattCharacteristic writeCharacteristic;
     private BluetoothDevice selectedDevice;
+
+    // Pending config for delayed write
+    private String roomNamePending, imageNamePending, ssidPending, passwordPending, usernamePending;
+    private boolean resetPending;
+
+    private final Set<String> receivedChipIds = new HashSet<>();
 
     public BleManager(Context context) {
         this.context = context;
@@ -49,18 +50,12 @@ public class BleManager {
         this.bleScanner = bluetoothAdapter.getBluetoothLeScanner();
     }
 
-    /**
-     * Запуск BLE-сканування. Через 3 секунди повертає список знайдених пристроїв у колбек.
-     */
     public void startBleScan(BleScanCallback callback) {
         foundDevices.clear();
         foundDeviceNames.clear();
 
-        // Перевірка дозволів
         if (!checkPermissions()) {
-            ActivityCompat.requestPermissions((Activity) context, new String[]{
-                    Manifest.permission.BLUETOOTH_SCAN
-            }, 102);
+            ActivityCompat.requestPermissions((Activity) context, new String[]{Manifest.permission.BLUETOOTH_SCAN}, 102);
             return;
         }
 
@@ -79,9 +74,6 @@ public class BleManager {
         }
     }
 
-    /**
-     * Колбек при знаходженні пристроїв під час сканування.
-     */
     private final ScanCallback scanCallback = new ScanCallback() {
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
@@ -94,10 +86,8 @@ public class BleManager {
                 String name = device.getName();
                 String address = device.getAddress();
 
-                // Ігноруємо, якщо ім’я не починається з ESP32_
                 if (name == null || !name.startsWith("ESP32_")) return;
 
-                // Перевірка, щоб MAC не дублювався
                 boolean alreadyAdded = false;
                 for (BluetoothDevice d : foundDevices) {
                     if (d.getAddress().equals(address)) {
@@ -108,7 +98,7 @@ public class BleManager {
 
                 if (!alreadyAdded) {
                     foundDevices.add(device);
-                    foundDeviceNames.add(name); // Додай назву як є (ESP32_1234ABCD)
+                    foundDeviceNames.add(name);
                 }
             }
         }
@@ -119,9 +109,6 @@ public class BleManager {
         }
     };
 
-    /**
-     * Надсилання конфігурації на ESP32.
-     */
     public void sendConfigToEsp32ViaDevice(BluetoothDevice device, String roomName, String imageName, String ssid, String password, String username, boolean reset) {
         if (device == null) {
             Toast.makeText(context, "BLE пристрій не вибрано", Toast.LENGTH_SHORT).show();
@@ -130,7 +117,6 @@ public class BleManager {
 
         selectedDevice = device;
 
-        // ✅ Очистити попереднє з'єднання
         if (bluetoothGatt != null) {
             if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
                 bluetoothGatt.disconnect();
@@ -140,58 +126,96 @@ public class BleManager {
             writeCharacteristic = null;
         }
 
-        // Перевірка дозволу
         if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions((Activity) context, new String[]{
-                    Manifest.permission.BLUETOOTH_CONNECT
-            }, 101);
+            ActivityCompat.requestPermissions((Activity) context, new String[]{Manifest.permission.BLUETOOTH_CONNECT}, 101);
             return;
         }
 
-        bluetoothGatt = device.connectGatt(context, false, new BluetoothGattCallback() {
-            @Override
-            public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
-                if (newState == BluetoothProfile.STATE_CONNECTED) {
-                    if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
-                        gatt.discoverServices();
-                    }
-                }
-            }
+        roomNamePending = roomName;
+        imageNamePending = imageName;
+        ssidPending = ssid;
+        passwordPending = password;
+        usernamePending = username;
+        resetPending = reset;
 
-            @Override
-            public void onServicesDiscovered(BluetoothGatt gatt, int status) {
-                BluetoothGattService service = gatt.getService(SERVICE_UUID);
-                if (service != null) {
-                    BluetoothGattCharacteristic characteristic = service.getCharacteristic(CHARACTERISTIC_UUID);
-                    if (characteristic != null) {
-                        writeCharacteristic = characteristic;
-                        bluetoothGatt = gatt;
-                        sendConfigToEsp32(roomName, imageName, ssid, password, username, reset);
-                    }
-                } else {
-                    Toast.makeText(context, "Сервіс ESP32 не знайдено", Toast.LENGTH_SHORT).show();
-                }
-            }
-        });
+        bluetoothGatt = device.connectGatt(context, false, gattCallback);
     }
 
-
-    /**
-     * Встановлення вибраного пристрою.
-     */
-    public void setSelectedDevice(int index) {
-        if (index >= 0 && index < foundDevices.size()) {
-            selectedDevice = foundDevices.get(index);
+    private final BluetoothGattCallback gattCallback = new BluetoothGattCallback() {
+        @Override
+        public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
+            if (newState == BluetoothProfile.STATE_CONNECTED) {
+                if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
+                    gatt.discoverServices();
+                }
+            }
         }
-    }
 
-    public BluetoothDevice getSelectedDevice() {
-        return selectedDevice;
-    }
+        @Override
+        public void onServicesDiscovered(BluetoothGatt gatt, int status) {
+            BluetoothGattService service = gatt.getService(SERVICE_UUID);
+            if (service != null) {
+                BluetoothGattCharacteristic characteristic = service.getCharacteristic(CHARACTERISTIC_UUID);
+                if (characteristic != null) {
+                    writeCharacteristic = characteristic;
+                    bluetoothGatt = gatt;
 
-    /**
-     * Відправлення JSON-конфігурації на ESP32.
-     */
+                    if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
+                        boolean notifySet = gatt.setCharacteristicNotification(writeCharacteristic, true);
+                        if (notifySet) {
+                            BluetoothGattDescriptor descriptor = writeCharacteristic.getDescriptor(UUID.fromString("00002902-0000-1000-8000-00805f9b34fb"));
+                            if (descriptor != null) {
+                                descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
+                                gatt.writeDescriptor(descriptor);
+                            }
+                        }
+                    } else {
+                        ActivityCompat.requestPermissions((Activity) context, new String[]{Manifest.permission.BLUETOOTH_CONNECT}, 104);
+                    }
+
+                    sendConfigToEsp32(roomNamePending, imageNamePending, ssidPending, passwordPending, usernamePending, resetPending);
+                }
+            } else {
+                Toast.makeText(context, "Сервіс ESP32 не знайдено", Toast.LENGTH_SHORT).show();
+            }
+        }
+
+        @Override
+        public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
+            String value = new String(characteristic.getValue(), StandardCharsets.UTF_8);
+            Log.d("BLE", "Отримано з ESP32: " + value);
+
+            try {
+                JSONObject json = new JSONObject(value);
+                if (json.has("chipId")) {
+                    String chipId = json.getString("chipId");
+                    Log.d("BLE", "chipId: " + chipId);
+
+                    // ✅ Debounce: якщо chipId вже оброблений — не повторювати
+                    if (receivedChipIds.contains(chipId)) {
+                        Log.d("BLE", "chipId вже оброблений: " + chipId);
+                        return;
+                    }
+                    receivedChipIds.add(chipId);
+
+                    if (context instanceof MainActivity) {
+                        ((MainActivity) context).onChipIdReceivedFromEsp32(chipId);
+                    }
+
+                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
+                            gatt.disconnect();
+                            gatt.close();
+                            Log.d("BLE", "BLE-з'єднання завершено");
+                        }
+                    }, 1000);
+                }
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+        }
+    };
+
     private void sendConfigToEsp32(String roomName, String imageName, String ssid, String password, String username, boolean reset) {
         if (writeCharacteristic == null || bluetoothGatt == null) {
             Toast.makeText(context, "BLE не готовий", Toast.LENGTH_SHORT).show();
@@ -215,16 +239,6 @@ public class BleManager {
             if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
                 boolean success = bluetoothGatt.writeCharacteristic(writeCharacteristic);
                 Toast.makeText(context, success ? "Дані надіслано ESP32" : "Помилка надсилання", Toast.LENGTH_SHORT).show();
-
-                // ✅ Відключення через 500 мс
-                new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                    if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
-                        bluetoothGatt.disconnect();
-                        bluetoothGatt.close();
-                        bluetoothGatt = null;
-                        writeCharacteristic = null;
-                    }
-                }, 500);
             }
 
         } catch (JSONException e) {
@@ -232,15 +246,11 @@ public class BleManager {
         }
     }
 
-
-    /**
-     * Шифрування пароля (AES-128 ECB).
-     */
     private String encryptPassword(String password) {
         try {
-            String key = "my-secret-key-12"; // 16 символів
+            String key = "my-secret-key-12";
             SecretKeySpec secretKey = new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "AES");
-            Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding"); // PKCS5 = PKCS7 по суті
+            Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
             cipher.init(Cipher.ENCRYPT_MODE, secretKey);
             byte[] encrypted = cipher.doFinal(password.getBytes(StandardCharsets.UTF_8));
             return Base64.encodeToString(encrypted, Base64.NO_WRAP);
@@ -250,43 +260,16 @@ public class BleManager {
         }
     }
 
-    public void sendRawJsonToEsp32(BluetoothDevice device, String jsonString) {
-        if (context.checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
-            Log.e("BLE_RESET", "Немає дозволу BLUETOOTH_CONNECT");
-            return;
+    public void setSelectedDevice(int index) {
+        if (index >= 0 && index < foundDevices.size()) {
+            selectedDevice = foundDevices.get(index);
         }
-
-        if (bluetoothGatt == null || writeCharacteristic == null) {
-            Log.e("BLE_RESET", "BLE не готовий для запису");
-            return;
-        }
-
-        writeCharacteristic.setValue(jsonString.getBytes(StandardCharsets.UTF_8));
-        writeCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
-        boolean success = bluetoothGatt.writeCharacteristic(writeCharacteristic);
-
-        Log.d("BLE_RESET", "Write success: " + success + ", Data: " + jsonString);
     }
 
-
-    /**
-     * Перевірка необхідних BLE-дозволів.
-     */
-    private boolean checkPermissions() {
-        return ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED &&
-                ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED;
+    public BluetoothDevice getSelectedDevice() {
+        return selectedDevice;
     }
 
-    /**
-     * Колбек для повернення списку знайдених пристроїв у Spinner.
-     */
-    public interface BleScanCallback {
-        void onDevicesFound(List<String> deviceNames, List<BluetoothDevice> devices);
-    }
-
-    /**
-     * Очистка після роботи з BLE.
-     */
     public void cleanup() {
         if (bluetoothGatt != null) {
             if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
@@ -294,5 +277,18 @@ public class BleManager {
             }
             bluetoothGatt = null;
         }
+    }
+
+    private boolean checkPermissions() {
+        return ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED &&
+                ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    public interface BleScanCallback {
+        void onDevicesFound(List<String> deviceNames, List<BluetoothDevice> devices);
+    }
+
+    public void clearChipIdCache(String chipId) {
+        // нічого не робить
     }
 }

@@ -184,24 +184,25 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="24dp"
             android:layout_marginBottom="8dp">
 
             <ImageView
                 android:layout_width="24dp"
                 android:layout_height="24dp"
                 android:src="@drawable/esp32_icon"
-                android:layout_marginEnd="8dp"
-                android:contentDescription="ESP32" />
+                android:contentDescription="ESP32"
+                android:layout_marginEnd="12dp" />
 
-            <!-- ✅ FIXED: був TextView, тепер Button -->
             <Button
                 android:id="@+id/btnScanBle"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
+                android:layout_weight="1"
                 android:layout_height="wrap_content"
                 android:text="🔍 Сканувати ESP32"
                 android:textColor="@color/weather_card_text"
-                android:background="@drawable/bg_chip_rounded" />
+                android:background="@drawable/bg_chip_rounded"
+                android:paddingVertical="10dp"/>
 
             <ProgressBar
                 android:id="@+id/progressScan"
@@ -213,22 +214,25 @@
         </LinearLayout>
 
         <TextView
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Оберіть плату ESP32:"
             android:textColor="@color/weather_card_text"
-            android:layout_marginTop="16dp"
-            android:layout_marginBottom="8dp"/>
+            android:textSize="16sp"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="4dp"
+            android:textStyle="bold"/>
 
         <Spinner
             android:id="@+id/spinnerDevices"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="48dp"
             android:background="@drawable/bg_chip_rounded"
-            android:popupBackground="@color/background_color"
-            android:padding="12dp"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
             android:textAlignment="center"
-            android:spinnerMode="dropdown" />
+            android:spinnerMode="dropdown"
+            android:popupBackground="@color/background_color" />
 
         <com.google.android.material.checkbox.MaterialCheckBox
             android:id="@+id/checkboxReset"
@@ -239,7 +243,7 @@
             android:textColor="@color/weather_card_text"
             android:buttonTint="@color/weather_card_text"
             android:layout_marginTop="16dp"
-            android:layout_marginBottom="8dp"/>
+            android:layout_marginBottom="12dp"/>
 
         <LinearLayout
             android:id="@+id/dialogButtonsLayout"
@@ -247,25 +251,28 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="end"
-            android:layout_marginTop="16dp"
-            android:layout_marginBottom="8dp">
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="16dp"
+            android:paddingTop="8dp">
 
             <Button
                 android:id="@+id/btnCancel"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_height="48dp"
                 android:text="Скасувати"
                 android:textColor="@color/weather_card_text"
                 android:background="@drawable/bg_chip_rounded"
-                android:layout_marginEnd="16dp" />
+                android:layout_marginEnd="12dp"
+                android:minWidth="96dp" />
 
             <Button
                 android:id="@+id/btnCreate"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_height="48dp"
                 android:text="Створити"
                 android:textColor="@color/weather_card_text"
-                android:background="@drawable/bg_chip_rounded" />
+                android:background="@drawable/bg_chip_rounded"
+                android:minWidth="96dp" />
         </LinearLayout>
     </LinearLayout>
 </ScrollView>

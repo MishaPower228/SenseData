@@ -115,7 +115,14 @@ public class RegisterActivity extends AppCompatActivity {
             public void onResponse(Call<UserResponse> call, Response<UserResponse> response) {
                 if (response.code() == 201) {
                     SharedPreferences prefs = getSharedPreferences("MyAppPrefs", MODE_PRIVATE);
-                    prefs.edit().putString("username", username).apply();
+                    SharedPreferences.Editor editor = prefs.edit();
+                    editor.putString("username", username);
+
+                    // 💡 Збереження userId, отриманого з відповіді
+                    int userId = response.body().getId(); // ← це твій userId з UserResponse
+                    editor.putInt("userId", userId);
+
+                    editor.apply();
 
                     Toast.makeText(RegisterActivity.this, "Реєстрація успішна", Toast.LENGTH_SHORT).show();
 
@@ -143,24 +150,28 @@ public class RegisterActivity extends AppCompatActivity {
             @Override
             public void onResponse(Call<UserResponse> call, Response<UserResponse> response) {
                 if (response.isSuccessful() && response.body() != null) {
-                    String accessToken = response.body().getAccessToken();
-                    String refreshToken = response.body().getRefreshToken();
 
+                    // ⬇️ Тут зберігаємо все в SharedPreferences
                     SharedPreferences prefs = getSharedPreferences("MyAppPrefs", MODE_PRIVATE);
                     prefs.edit()
-                            .putString("username", username)
-                            .putString("accessToken", accessToken)
-                            .putString("refreshToken", refreshToken)
+                            .putInt("userId", response.body().getId())
+                            .putString("username", response.body().getUsername())
+                            .putString("accessToken", response.body().getAccessToken())
+                            .putString("refreshToken", response.body().getRefreshToken())
                             .apply();
 
                     Toast.makeText(RegisterActivity.this, "Успішна реєстрація і вхід", Toast.LENGTH_SHORT).show();
+
+                    // Переходимо на головну активність
                     startActivity(new Intent(RegisterActivity.this, MainActivity.class));
                     finish();
+
                 } else {
                     Toast.makeText(RegisterActivity.this, "Автоматичний вхід не вдався", Toast.LENGTH_SHORT).show();
                     animateError();
                 }
             }
+
 
             @Override
             public void onFailure(Call<UserResponse> call, Throwable t) {

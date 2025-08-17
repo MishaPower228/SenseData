@@ -7,24 +7,38 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.DiffUtil;
+import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.sensedata.R;
 import com.example.sensedata.model.RoomWithSensorDto;
 
-import java.util.List;
+import java.util.Objects;
 
-public class RoomAdapter extends RecyclerView.Adapter<RoomAdapter.RoomViewHolder> {
+public class RoomAdapter extends ListAdapter<RoomWithSensorDto, RoomAdapter.RoomViewHolder> {
 
     public interface OnRoomClickListener {
         void onRoomClick(RoomWithSensorDto room);
     }
 
-    private final List<RoomWithSensorDto> roomList;
     private final OnRoomClickListener listener;
 
-    public RoomAdapter(List<RoomWithSensorDto> roomList, OnRoomClickListener listener) {
-        this.roomList = roomList;
+    public RoomAdapter(OnRoomClickListener listener) {
+        super(new DiffUtil.ItemCallback<RoomWithSensorDto>() {
+            @Override
+            public boolean areItemsTheSame(@NonNull RoomWithSensorDto oldItem, @NonNull RoomWithSensorDto newItem) {
+                return Objects.equals(oldItem.getChipId(), newItem.getChipId());
+            }
+
+            @Override
+            public boolean areContentsTheSame(@NonNull RoomWithSensorDto oldItem, @NonNull RoomWithSensorDto newItem) {
+                return Objects.equals(oldItem.getRoomName(), newItem.getRoomName()) &&
+                        Objects.equals(oldItem.getTemperature(), newItem.getTemperature()) &&
+                        Objects.equals(oldItem.getHumidity(), newItem.getHumidity()) &&
+                        Objects.equals(oldItem.getImageName(), newItem.getImageName());
+            }
+        });
         this.listener = listener;
     }
 
@@ -38,13 +52,8 @@ public class RoomAdapter extends RecyclerView.Adapter<RoomAdapter.RoomViewHolder
 
     @Override
     public void onBindViewHolder(@NonNull RoomViewHolder holder, int position) {
-        RoomWithSensorDto room = roomList.get(position);
+        RoomWithSensorDto room = getItem(position);
         holder.bind(room, listener);
-    }
-
-    @Override
-    public int getItemCount() {
-        return roomList.size();
     }
 
     static class RoomViewHolder extends RecyclerView.ViewHolder {
@@ -60,11 +69,11 @@ public class RoomAdapter extends RecyclerView.Adapter<RoomAdapter.RoomViewHolder
         }
 
         public void bind(RoomWithSensorDto room, OnRoomClickListener listener) {
-            textRoomName.setText(room.name);
-            textTemp.setText("🌡 Темп: " + (room.temperature != null ? room.temperature + " °C" : "--"));
-            textHumidity.setText("💧 Волога: " + (room.humidity != null ? room.humidity + " %" : "--"));
+            textRoomName.setText(room.getRoomName());
+            textTemp.setText("\uD83C\uDF21 Темп: " + (room.getTemperature() != null ? room.getTemperature() + " °C" : "--"));
+            textHumidity.setText("\uD83D\uDCA7 Волога: " + (room.getHumidity() != null ? room.getHumidity() + " %" : "--"));
 
-            int imageResId = getImageResId(room.imageName);
+            int imageResId = getImageResId(room.getImageName());
             imageRoom.setImageResource(imageResId);
 
             itemView.setOnClickListener(v -> listener.onRoomClick(room));
@@ -72,11 +81,16 @@ public class RoomAdapter extends RecyclerView.Adapter<RoomAdapter.RoomViewHolder
 
         private int getImageResId(String imageName) {
             switch (imageName) {
-                case "kitchen": return R.drawable.kitchen;
-                case "living_room": return R.drawable.living_room;
-                case "livingroom": return R.drawable.livingroom;
-                case "living_room_2": return R.drawable.living_room_2;
-                default: return R.drawable.living_room;
+                case "kitchen":
+                    return R.drawable.kitchen;
+                case "living_room":
+                    return R.drawable.living_room;
+                case "living_room_2":
+                    return R.drawable.living_room_2;
+                case "livingroom":
+                    return R.drawable.livingroom;
+                default:
+                    return R.drawable.living_room;
             }
         }
     }

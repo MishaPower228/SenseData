@@ -20,7 +20,7 @@ public class ApiClientMain {
                     .build();
 
             retrofit = new Retrofit.Builder()
-                    .baseUrl("http://192.168.140.32:5210/api/") // твоя локальна адреса
+                    .baseUrl("http://192.168.0.200:5210/api/") // твоя локальна адреса
                     .client(client)
                     .addConverterFactory(GsonConverterFactory.create())
                     .build();

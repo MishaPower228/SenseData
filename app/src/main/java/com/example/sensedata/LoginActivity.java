@@ -58,6 +58,7 @@ public class LoginActivity extends AppCompatActivity {
 
                     SharedPreferences prefs = getSharedPreferences("MyAppPrefs", MODE_PRIVATE);
                     prefs.edit()
+                            .putInt("userId", token.getId()) // ✅ Додай це
                             .putString("username", login)
                             .putString("accessToken", token.getAccessToken())
                             .putString("refreshToken", token.getRefreshToken())
