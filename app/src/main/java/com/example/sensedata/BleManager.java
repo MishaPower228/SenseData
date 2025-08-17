@@ -182,37 +182,32 @@ public class BleManager {
 
         @Override
         public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
-            String value = new String(characteristic.getValue(), StandardCharsets.UTF_8);
+            String value = new String(characteristic.getValue(), StandardCharsets.UTF_8).trim();
             Log.d("BLE", "Отримано з ESP32: " + value);
 
-            try {
-                JSONObject json = new JSONObject(value);
-                if (json.has("chipId")) {
-                    String chipId = json.getString("chipId");
-                    Log.d("BLE", "chipId: " + chipId);
+            // Тут value — це chipId у вигляді простої строки, наприклад "0CB7E21F9C9C"
+            String chipId = value;
 
-                    // ✅ Debounce: якщо chipId вже оброблений — не повторювати
-                    if (receivedChipIds.contains(chipId)) {
-                        Log.d("BLE", "chipId вже оброблений: " + chipId);
-                        return;
-                    }
-                    receivedChipIds.add(chipId);
-
-                    if (context instanceof MainActivity) {
-                        ((MainActivity) context).onChipIdReceivedFromEsp32(chipId);
-                    }
-
-                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
-                            gatt.disconnect();
-                            gatt.close();
-                            Log.d("BLE", "BLE-з'єднання завершено");
-                        }
-                    }, 1000);
-                }
-            } catch (JSONException e) {
-                e.printStackTrace();
+            // ✅ Debounce: якщо chipId вже оброблений — не повторювати
+            if (receivedChipIds.contains(chipId)) {
+                Log.d("BLE", "chipId вже оброблений: " + chipId);
+                return;
             }
+            receivedChipIds.add(chipId);
+
+            // ✅ Передати chipId у MainActivity
+            if (context instanceof MainActivity) {
+                ((MainActivity) context).onChipIdReceivedFromEsp32(chipId);
+            }
+
+            // ✅ Розірвати BLE-з'єднання з затримкою
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
+                    gatt.disconnect();
+                    gatt.close();
+                    Log.d("BLE", "BLE-з'єднання завершено");
+                }
+            }, 1000);
         }
     };
 
@@ -238,7 +233,10 @@ public class BleManager {
 
             if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
                 boolean success = bluetoothGatt.writeCharacteristic(writeCharacteristic);
-                Toast.makeText(context, success ? "Дані надіслано ESP32" : "Помилка надсилання", Toast.LENGTH_SHORT).show();
+                String toastMessage = success ? "Дані надіслано ESP32" : "Помилка надсилання";
+                new Handler(Looper.getMainLooper()).post(() ->
+                        Toast.makeText(context, toastMessage, Toast.LENGTH_SHORT).show()
+                );
             }
 
         } catch (JSONException e) {

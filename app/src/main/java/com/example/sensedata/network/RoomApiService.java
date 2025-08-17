@@ -13,18 +13,18 @@ import retrofit2.http.Path;
 
 public interface RoomApiService {
 
-    // POST: створити прив'язку плати до юзера (кімната)
-    @POST("api/DisplayData/ownership")
-    Call<RoomWithSensorDto> createRoom(@Body SensorOwnershipRequestDTO request);
+    // POST: створити кімнату (без тіла у відповіді)
+    @POST("DisplayData/ownership")
+    Call<Void> createRoom(@Body SensorOwnershipRequestDTO request);
 
     // GET: отримати кімнату по chipId
-    @GET("api/DisplayData/ownership/{chipId}/user/{userId}/latest")
+    @GET("/ownership/{chipId}/user/{userId}/latest")
     Call<RoomWithSensorDto> getRoomByChipId(
             @Path("chipId") String chipId,
             @Path("userId") int userId
     );
 
     // GET: отримати всі кімнати користувача
-    @GET("api/DisplayData/user/{userId}")
+    @GET("DisplayData/byUser/{userId}")
     Call<List<RoomWithSensorDto>> getAllRooms(@Path("userId") int userId);
 }
