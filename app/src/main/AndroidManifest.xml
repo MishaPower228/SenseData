@@ -11,8 +11,6 @@
     <uses-permission android:name="android.permission.BLUETOOTH" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
 
-
-
     <application
         android:name=".MyApp"
         android:networkSecurityConfig="@xml/network_security_config"
@@ -36,6 +34,8 @@
         </activity>
         <activity android:name=".LoginActivity" />
         <activity android:name=".MainActivity" />
+        <activity android:name=".CreateRoomActivity"
+            android:exported="false"/>
     </application>
 
 </manifest>

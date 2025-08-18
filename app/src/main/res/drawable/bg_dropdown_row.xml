@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- натиснутий/вибраний/в фокусі -->
+    <item android:state_pressed="true">
+        <shape><solid android:color="?attr/colorPrimaryContainer"/></shape>
+    </item>
+    <item android:state_focused="true">
+        <shape><solid android:color="?attr/colorPrimaryContainer"/></shape>
+    </item>
+    <item android:state_activated="true">
+        <shape><solid android:color="?attr/colorPrimaryContainer"/></shape>
+    </item>
+
+    <!-- звичайний стан -->
+    <item>
+        <shape><solid android:color="@color/background_color"/></shape>
+    </item>
+</selector>
