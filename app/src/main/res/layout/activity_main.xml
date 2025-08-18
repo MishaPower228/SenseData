@@ -12,9 +12,10 @@
     <androidx.appcompat.widget.Toolbar
         android:id="@+id/custom_toolbar"
         android:layout_width="0dp"
-        android:layout_height="?attr/actionBarSize"
+        android:layout_height="80dp"
         android:background="@drawable/rounded_toolbar"
         android:elevation="4dp"
+        android:paddingTop="35dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
@@ -22,7 +23,9 @@
         <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:gravity="center_vertical">
+            android:gravity="center_vertical"
+            tools:layout_editor_absoluteX="16dp"
+            tools:layout_editor_absoluteY="20dp">
 
             <TextView
                 android:id="@+id/toolbar_title"
@@ -30,7 +33,7 @@
                 android:layout_height="wrap_content"
                 android:layout_centerInParent="true"
                 android:text="username house"
-                android:textColor="@color/text"
+                android:textColor="@color/weather_card_text"
                 android:textSize="18sp"
                 android:textStyle="bold" />
 
@@ -46,6 +49,22 @@
         </RelativeLayout>
     </androidx.appcompat.widget.Toolbar>
 
+    <!-- Заголовок над погодою -->
+    <TextView
+        android:id="@+id/labelWeather"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginTop="12dp"
+        android:text="Погода довкола   "
+        android:textColor="@color/weather_card_text"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/custom_toolbar" />
+
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/weather_card"
         android:layout_width="0dp"
@@ -57,7 +76,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/custom_toolbar">
+        app:layout_constraintTop_toBottomOf="@+id/labelWeather">
 
         <!-- Місто -->
         <TextView
@@ -73,16 +92,19 @@
             app:layout_constraintTop_toTopOf="parent" />
 
         <!-- Іконка -->
+
+        <!-- Назва погоди -->
+
         <ImageView
             android:id="@+id/imageWeatherIcon"
-            android:layout_width="129dp"
-            android:layout_height="143dp"
-            android:layout_marginTop="8dp"
+            android:layout_width="109dp"
+            android:layout_height="105dp"
+            android:layout_marginStart="8dp"
+            android:layout_marginTop="16dp"
             android:contentDescription="Іконка погоди"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/textWeatherCity" />
 
-        <!-- Назва погоди -->
         <TextView
             android:id="@+id/textWeatherMain"
             android:layout_width="wrap_content"
@@ -122,19 +144,6 @@
             app:layout_constraintStart_toEndOf="@id/imageWeatherIcon"
             app:layout_constraintTop_toBottomOf="@+id/textWeatherCity" />
 
-        <!-- Відчувається -->
-        <TextView
-            android:id="@+id/textWeatherFeelsLike"
-            android:layout_width="200dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/bg_weather_label"
-            android:text="Відчувається як: ..."
-            android:textColor="@color/weather_card_text"
-            android:textSize="15sp"
-            app:layout_constraintStart_toStartOf="@id/textWeatherTemp"
-            app:layout_constraintTop_toBottomOf="@id/textWeatherTemp" />
-
         <!-- Вологість -->
         <TextView
             android:id="@+id/textWeatherHumidity"
@@ -146,7 +155,7 @@
             android:textColor="@color/weather_card_text"
             android:textSize="15sp"
             app:layout_constraintStart_toStartOf="@id/textWeatherTemp"
-            app:layout_constraintTop_toBottomOf="@id/textWeatherFeelsLike" />
+            app:layout_constraintTop_toBottomOf="@id/textWeatherTemp" />
 
         <!-- Тиск -->
         <TextView
@@ -162,6 +171,21 @@
             app:layout_constraintTop_toBottomOf="@id/textWeatherHumidity" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 
+    <TextView
+        android:id="@+id/labelRooms"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginTop="10dp"
+        android:text="Мої кімнати   "
+        android:textColor="@color/weather_card_text"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/weather_card" />
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/room_recycler_view"
         android:layout_width="match_parent"
@@ -174,7 +198,7 @@
         android:padding="8dp"
         app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/weather_card"
+        app:layout_constraintTop_toBottomOf="@+id/labelRooms"
         tools:listitem="@layout/item_room_chip" />
 
     <!-- Header Image -->
@@ -193,7 +217,7 @@
 
         <com.google.android.material.imageview.ShapeableImageView
             android:id="@+id/headerImage"
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="95dp"
             android:contentDescription="@string/room_image_desc"
             android:scaleType="centerCrop"
@@ -207,7 +231,8 @@
         android:layout_height="wrap_content"
         android:layout_margin="16dp"
         android:src="@drawable/ic_add"
-        app:backgroundTint="@color/background_toolbar_color"
+        android:contentDescription="@string/add_room"
+        app:backgroundTint="@color/main_color"
         app:borderWidth="15dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"

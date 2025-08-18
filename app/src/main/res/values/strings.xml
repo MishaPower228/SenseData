@@ -1,4 +1,7 @@
 <resources>
     <string name="app_name">SenseData</string>
     <string name="room_image_desc">Forest</string>
+    <string name="add_room">Додати кімнату</string>
+    <string name="hello_username">Привіт, %1$s</string>
+    <string name="guest">гість</string>
 </resources>

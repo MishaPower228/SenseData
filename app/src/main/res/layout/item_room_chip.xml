@@ -13,7 +13,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Living Room"
-        android:textColor="@color/text"
+        android:textColor="@color/weather_card_text"
         android:textSize="16sp"
         android:textStyle="bold"
         android:layout_marginBottom="8dp" />
@@ -39,7 +39,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="🌡 22°C"
-            android:textColor="@color/text"
+            android:textColor="@color/weather_card_text"
             android:textSize="14sp"
             android:gravity="start" />
 
@@ -49,7 +49,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="💧 45%"
-            android:textColor="@color/text"
+            android:textColor="@color/weather_card_text"
             android:textSize="14sp"
             android:gravity="end" />
     </LinearLayout>

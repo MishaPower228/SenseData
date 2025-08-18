@@ -1,6 +1,6 @@
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <solid android:color="@color/bg_weather_card" /> <!-- Зміни на свій фоновий колір -->
+    <solid android:color="@color/background_color" /> <!-- Зміни на свій фоновий колір -->
     <corners android:radius="45dp" />
     <padding
         android:left="8dp"

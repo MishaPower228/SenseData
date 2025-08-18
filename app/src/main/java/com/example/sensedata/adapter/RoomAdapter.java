@@ -14,6 +14,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.sensedata.R;
 import com.example.sensedata.model.RoomWithSensorDto;
 
+import java.util.Locale;
 import java.util.Objects;
 
 public class RoomAdapter extends ListAdapter<RoomWithSensorDto, RoomAdapter.RoomViewHolder> {
@@ -70,14 +71,27 @@ public class RoomAdapter extends ListAdapter<RoomWithSensorDto, RoomAdapter.Room
 
         public void bind(RoomWithSensorDto room, OnRoomClickListener listener) {
             textRoomName.setText(room.getRoomName());
-            textTemp.setText("\uD83C\uDF21 Темп: " + (room.getTemperature() != null ? room.getTemperature() + " °C" : "--"));
-            textHumidity.setText("\uD83D\uDCA7 Волога: " + (room.getHumidity() != null ? room.getHumidity() + " %" : "--"));
+
+            Double tempVal = room.getTemperature();
+            String t = (tempVal == null || tempVal.isNaN())
+                    ? "--"
+                    : ((int) Math.round(tempVal)) + " °C";   // округлення до цілого
+
+            Double humVal = room.getHumidity();
+            String h = (humVal == null || humVal.isNaN())
+                    ? "--"
+                    : String.format(Locale.getDefault(), "%.0f %%", humVal); // як і було: ціле
+
+            textTemp.setText("\uD83C\uDF21" + t);
+            textHumidity.setText("\uD83D\uDCA7" + h);
 
             int imageResId = getImageResId(room.getImageName());
             imageRoom.setImageResource(imageResId);
 
             itemView.setOnClickListener(v -> listener.onRoomClick(room));
         }
+
+
 
         private int getImageResId(String imageName) {
             switch (imageName) {

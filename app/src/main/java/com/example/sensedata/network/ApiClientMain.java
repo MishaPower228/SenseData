@@ -7,6 +7,7 @@ import com.example.sensedata.AuthInterceptor.TokenAuthenticator;
 
 import okhttp3.OkHttpClient;
 import retrofit2.Retrofit;
+import retrofit2.converter.scalars.ScalarsConverterFactory;  // ← додай
 import retrofit2.converter.gson.GsonConverterFactory;
 
 public class ApiClientMain {
@@ -15,18 +16,20 @@ public class ApiClientMain {
     public static Retrofit getClient(Context context) {
         if (retrofit == null) {
             OkHttpClient client = new OkHttpClient.Builder()
-                    .addInterceptor(new AuthInterceptor(context)) // додає токен до кожного запиту
-                    .authenticator(new TokenAuthenticator(context)) // обробляє 401
+                    .addInterceptor(new AuthInterceptor(context))
+                    .authenticator(new TokenAuthenticator(context))
                     .build();
 
             retrofit = new Retrofit.Builder()
-                    .baseUrl("http://192.168.0.200:5210/api/") // твоя локальна адреса
+                    .baseUrl("http://192.168.92.32:5210/api/")
                     .client(client)
-                    .addConverterFactory(GsonConverterFactory.create())
+                    .addConverterFactory(ScalarsConverterFactory.create()) // ← СПОЧАТКУ
+                    .addConverterFactory(GsonConverterFactory.create())    // ← ПОТІМ
                     .build();
         }
-
         return retrofit;
     }
-}
 
+    // (опційно) щоб можна було перебудувати клієнт після змін
+    public static void reset() { retrofit = null; }
+}

@@ -1,7 +1,7 @@
 package com.example.sensedata.network;
 
 import com.example.sensedata.model.RoomWithSensorDto;
-import com.example.sensedata.model.SensorOwnershipRequestDTO;
+import com.example.sensedata.model.SensorOwnershipCreateDto;
 
 import java.util.List;
 
@@ -13,18 +13,18 @@ import retrofit2.http.Path;
 
 public interface RoomApiService {
 
-    // POST: створити кімнату (без тіла у відповіді)
+    // POST: створити ownership — сервер тепер повертає RoomWithSensorDto (201 Created)
     @POST("DisplayData/ownership")
-    Call<Void> createRoom(@Body SensorOwnershipRequestDTO request);
+    Call<RoomWithSensorDto> createRoom(@Body SensorOwnershipCreateDto request);
 
-    // GET: отримати кімнату по chipId
-    @GET("/ownership/{chipId}/user/{userId}/latest")
+    // GET: отримати кімнату по chipId+userId
+    @GET("DisplayData/ownership/{chipId}/user/{userId}/latest")
     Call<RoomWithSensorDto> getRoomByChipId(
             @Path("chipId") String chipId,
             @Path("userId") int userId
     );
 
-    // GET: отримати всі кімнати користувача
+    // GET: всі кімнати користувача
     @GET("DisplayData/byUser/{userId}")
     Call<List<RoomWithSensorDto>> getAllRooms(@Path("userId") int userId);
 }

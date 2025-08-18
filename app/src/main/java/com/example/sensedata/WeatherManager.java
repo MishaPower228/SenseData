@@ -83,7 +83,6 @@ public class WeatherManager {
                     ((TextView) activity.findViewById(R.id.textWeatherMain)).setText("Погода: " + weather.weather.get(0).main);
                     ((TextView) activity.findViewById(R.id.textWeatherDescription)).setText("Опис: " + weather.weather.get(0).description);
                     ((TextView) activity.findViewById(R.id.textWeatherTemp)).setText("Температура: " + weather.main.temp + "°C");
-                    ((TextView) activity.findViewById(R.id.textWeatherFeelsLike)).setText("Відчувається як: " + weather.main.feelsLike + "°C");
                     ((TextView) activity.findViewById(R.id.textWeatherHumidity)).setText("Вологість: " + weather.main.humidity + "%");
                     ((TextView) activity.findViewById(R.id.textWeatherPressure)).setText("Тиск: " + weather.main.pressure + " гПа");
 

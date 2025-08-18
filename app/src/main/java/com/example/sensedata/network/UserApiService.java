@@ -9,7 +9,9 @@ import com.example.sensedata.model.UserLoginDto;
 
 import retrofit2.Call;
 import retrofit2.http.Body;
+import retrofit2.http.GET;
 import retrofit2.http.POST;
+import retrofit2.http.Path;
 
 public interface UserApiService {
     @POST("Users/register")
@@ -20,4 +22,7 @@ public interface UserApiService {
 
     @POST("Users/refresh")
     Call<UserResponse> refreshToken(@Body RefreshRequest request);
+
+    @GET("api/users/{id}")
+    Call<String> getUsername(@Path("id") int id);
 }

@@ -6,18 +6,22 @@ import android.bluetooth.BluetoothDevice;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.Typeface;
 import android.os.Bundle;
 import android.os.Handler;
+import android.text.SpannableString;
+import android.text.style.StyleSpan;
 import android.util.Log;
 import android.view.View;
 import android.widget.*;
-
+import androidx.appcompat.widget.Toolbar;
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import android.graphics.Paint;
 
 import com.example.sensedata.adapter.RoomAdapter;
 import com.example.sensedata.model.RoomRequest;
@@ -26,6 +30,7 @@ import com.example.sensedata.model.SensorOwnershipRequestDTO;
 import com.example.sensedata.network.ApiClientMain;
 import com.example.sensedata.network.ApiClientWeather;
 import com.example.sensedata.network.RoomApiService;
+import com.example.sensedata.network.UserApiService;
 import com.google.android.material.checkbox.MaterialCheckBox;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.squareup.picasso.BuildConfig;
@@ -35,6 +40,8 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -75,6 +82,24 @@ public class MainActivity extends AppCompatActivity {
         EdgeToEdge.enable(this);
 
         setContentView(R.layout.activity_main);
+
+        TextView labelWeather = findViewById(R.id.labelWeather);
+        TextView labelRooms   = findViewById(R.id.labelRooms);
+
+        labelWeather.setPaintFlags(labelWeather.getPaintFlags() | Paint.UNDERLINE_TEXT_FLAG);
+        labelRooms.setPaintFlags(labelRooms.getPaintFlags() | Paint.UNDERLINE_TEXT_FLAG);
+
+        Toolbar toolbar = findViewById(R.id.custom_toolbar);
+        setSupportActionBar(toolbar);
+        Objects.requireNonNull(getSupportActionBar()).setDisplayShowTitleEnabled(false);
+        TextView title = toolbar.findViewById(R.id.toolbar_title);
+
+// 1) миттєво з Prefs
+        String cached = getSavedUsername();
+        setHello(title, (cached != null) ? cached : getString(R.string.guest));
+
+// 2) опціонально оновити з API
+        refreshUsernameFromServer(title);
 
         bleManager = new BleManager(this);
         weatherManager = new WeatherManager(this);
@@ -168,66 +193,66 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    public void onChipIdReceivedFromEsp32(String chipId) {
+    public void onChipIdReceivedFromEsp32(String chipIdRaw) {
+        if (chipIdRaw == null) return;
+
+        String chipId = chipIdRaw.trim().toUpperCase(Locale.ROOT);
         Log.d("BLE_NOTIFY", "Отримано з ESP32: " + chipId);
 
         if (roomAlreadyExists(chipId)) {
-            Log.d("BLE_NOTIFY", "chipId вже оброблений: " + chipId);
+            Log.d("BLE_NOTIFY", "chipId вже в списку: " + chipId);
             return;
         }
 
         SharedPreferences prefs = getSharedPreferences("MyAppPrefs", MODE_PRIVATE);
         int userId = prefs.getInt("userId", -1);
-        String username = prefs.getString("username", null);
 
-        if (userId == -1 || username == null) {
-            Toast.makeText(this, "UserId або Username не знайдені", Toast.LENGTH_SHORT).show();
+        if (userId == -1) {
+            Toast.makeText(this, "UserId не знайдено. Увійдіть знову.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (lastCreatedRoomName == null || lastCreatedImageName == null) {
+            Toast.makeText(this, "Немає параметрів кімнати (roomName/imageName). Створіть кімнату ще раз.", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // ✅ 1. Надсилаємо POST-запит на /ownership
         RoomApiService apiService = ApiClientMain.getClient(MainActivity.this).create(RoomApiService.class);
 
-        SensorOwnershipRequestDTO request = new SensorOwnershipRequestDTO(
-                lastCreatedRoomName,
-                lastCreatedImageName,
-                chipId,
-                username
-        );
+        // ✅ новий запит з userId
+        com.example.sensedata.model.SensorOwnershipCreateDto request =
+                new com.example.sensedata.model.SensorOwnershipCreateDto(
+                        userId,
+                        chipId,
+                        lastCreatedRoomName,
+                        lastCreatedImageName
+                );
 
-        Log.d("ROOM_CREATE", "POST на /ownership: chipId=" + chipId + ", username=" + username + ", room=" + lastCreatedRoomName + ", image=" + lastCreatedImageName);
+        Log.d("ROOM_CREATE", "POST /ownership: chipId=" + chipId + ", userId=" + userId + ", room=" + lastCreatedRoomName + ", image=" + lastCreatedImageName);
 
-        Call<Void> postCall = apiService.createRoom(request);
-        postCall.enqueue(new Callback<Void>() {
+        apiService.createRoom(request).enqueue(new Callback<RoomWithSensorDto>() {
             @Override
-            public void onResponse(Call<Void> call, Response<Void> response) {
-                if (response.isSuccessful()) {
-                    Log.d("ROOM_CREATE", "Кімната успішно створена на сервері");
+            public void onResponse(Call<RoomWithSensorDto> call, Response<RoomWithSensorDto> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    RoomWithSensorDto room = response.body();
 
-                    // ✅ 2. Після POST виконуємо GET по chipId + userId
-                    Call<RoomWithSensorDto> getCall = apiService.getRoomByChipId(chipId, userId);
-                    getCall.enqueue(new Callback<RoomWithSensorDto>() {
-                        @Override
-                        public void onResponse(Call<RoomWithSensorDto> call, Response<RoomWithSensorDto> response) {
-                            if (response.isSuccessful() && response.body() != null) {
-                                RoomWithSensorDto room = response.body();
-                                List<RoomWithSensorDto> updatedList = new ArrayList<>(roomAdapter.getCurrentList());
-                                updatedList.add(room);
-                                roomAdapter.submitList(updatedList);
-                                Toast.makeText(MainActivity.this, "Кімната додана: " + room.getRoomName(), Toast.LENGTH_SHORT).show();
-                            } else {
-                                Toast.makeText(MainActivity.this, "Помилка при отриманні кімнати", Toast.LENGTH_SHORT).show();
-                                Log.e("ROOM_GET", "Помилка GET: " + response.code());
-                            }
+                    // ✅ одразу додаємо до списку (без GET)
+                    List<RoomWithSensorDto> updated = new ArrayList<>(roomAdapter.getCurrentList());
+                    // захист від дубля (на всякий)
+                    boolean exists = false;
+                    for (RoomWithSensorDto r : updated) {
+                        if (r.getChipId() != null && r.getChipId().equalsIgnoreCase(room.getChipId())) {
+                            exists = true; break;
                         }
-
-                        @Override
-                        public void onFailure(Call<RoomWithSensorDto> call, Throwable t) {
-                            Toast.makeText(MainActivity.this, "Помилка GET-запиту: " + t.getMessage(), Toast.LENGTH_SHORT).show();
-                            Log.e("ROOM_GET", "GET помилка", t);
-                        }
-                    });
-
+                    }
+                    if (!exists) {
+                        updated.add(room);
+                        roomAdapter.submitList(updated);
+                        Toast.makeText(MainActivity.this, "Кімната додана: " + room.getRoomName(), Toast.LENGTH_SHORT).show();
+                    }
+                } else if (response.code() == 409) {
+                    // Пристрій уже зареєстрований → можна підтягнути існуючу
+                    Toast.makeText(MainActivity.this, "Пристрій вже зареєстрований. Оновлюю список…", Toast.LENGTH_SHORT).show();
+                    refreshRoomsData();
                 } else {
                     Toast.makeText(MainActivity.this, "Помилка створення кімнати (POST): " + response.code(), Toast.LENGTH_SHORT).show();
                     Log.e("ROOM_CREATE", "POST помилка: " + response.code());
@@ -235,7 +260,7 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onFailure(Call<Void> call, Throwable t) {
+            public void onFailure(Call<RoomWithSensorDto> call, Throwable t) {
                 Toast.makeText(MainActivity.this, "Помилка POST-запиту: " + t.getMessage(), Toast.LENGTH_SHORT).show();
                 Log.e("ROOM_CREATE", "POST виключення", t);
             }
@@ -249,8 +274,9 @@ public class MainActivity extends AppCompatActivity {
 
     private boolean roomAlreadyExists(String chipId) {
         if (chipId == null) return false;
+        String target = chipId.trim().toUpperCase(Locale.ROOT);
         for (RoomWithSensorDto room : roomAdapter.getCurrentList()) {
-            if (chipId.equals(room.getChipId())) {
+            if (room.getChipId() != null && room.getChipId().trim().toUpperCase(Locale.ROOT).equals(target)) {
                 return true;
             }
         }
@@ -406,6 +432,38 @@ public class MainActivity extends AppCompatActivity {
 
     private boolean isAsciiOnly(String input) {
         return input.matches("\\A\\p{ASCII}*\\z");
+    }
+
+    private void setHello(TextView title, String name) {
+        String text = getString(R.string.hello_username, name); // "Привіт, %1$s"
+        // зробимо ім'я жирним (приємна дрібниця)
+        SpannableString s = new SpannableString(text);
+        int start = text.indexOf(name);
+        if (start >= 0) s.setSpan(new StyleSpan(Typeface.BOLD), start, start + name.length(), 0);
+        title.setText(s);
+    }
+
+    private void refreshUsernameFromServer(TextView title) {
+        int userId = getSavedUserId();
+        if (userId <= 0) return; // немає id — пропускаємо
+
+        UserApiService api = ApiClientMain.getClient(this).create(UserApiService.class);
+        api.getUsername(userId).enqueue(new retrofit2.Callback<String>() {
+            @Override public void onResponse(retrofit2.Call<String> call, retrofit2.Response<String> resp) {
+                if (resp.isSuccessful() && resp.body() != null) {
+                    String fresh = resp.body().trim();
+                    setHello(title, fresh);
+                    getSharedPreferences("MyAppPrefs", MODE_PRIVATE)
+                            .edit()
+                            .putString("username", fresh)
+                            .putLong("username_refreshed_at", System.currentTimeMillis())
+                            .apply();
+                }
+            }
+            @Override public void onFailure(retrofit2.Call<String> call, Throwable t) {
+                // тихо ігноруємо — залишаємо кешований username
+            }
+        });
     }
 }
 

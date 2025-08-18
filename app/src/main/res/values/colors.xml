@@ -2,9 +2,10 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-    <color name="background_color">#dbe2f9</color>
-    <color name="background_toolbar_color">#032696</color>
+    <color name="background_color">#bdc2de</color>
+    <color name="background_toolbar_color">#acb3d6</color>
     <color name="text">#ffffff</color>
     <color name="bg_weather_card">#dbe2f9</color>
     <color name="weather_card_text">#241d06</color>
+    <color name="main_color">#4363ea</color>
 </resources>
