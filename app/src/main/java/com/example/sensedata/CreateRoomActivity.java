@@ -29,7 +29,7 @@ import com.google.android.material.textfield.MaterialAutoCompleteTextView;
 
 import java.util.ArrayList;
 
-public class CreateRoomActivity extends AppCompatActivity {
+public class CreateRoomActivity extends ImmersiveActivity {
 
     // ====== UI ======
     private EditText roomNameInput, ssidInput, passwordInput;

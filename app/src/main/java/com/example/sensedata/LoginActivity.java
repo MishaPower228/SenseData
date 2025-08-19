@@ -4,6 +4,8 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.view.View;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
@@ -19,7 +21,7 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-public class LoginActivity extends AppCompatActivity {
+public class LoginActivity extends ImmersiveActivity {
 
     private EditText editTextLogin, editTextPassword;
     private Button buttonLogin;
@@ -29,12 +31,27 @@ public class LoginActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
 
-        editTextLogin = findViewById(R.id.editTextLogin);
+        // Клавіатура "підштовхує" контент
+        getWindow().setSoftInputMode(
+                WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
+                        | WindowManager.LayoutParams.SOFT_INPUT_STATE_HIDDEN
+        );
+
+        // Підкладаємо IMEInsets у корінь
+        View root = findViewById(R.id.login_root);
+        if (root == null) root = findViewById(android.R.id.content);
+        applyImePadding(root);
+        if (!(root instanceof androidx.core.widget.NestedScrollView)) {
+            View btn = findViewById(R.id.buttonLogin);
+            if (btn != null) applyImeMargin(btn);
+        }
+
+        editTextLogin    = findViewById(R.id.editTextLogin);
         editTextPassword = findViewById(R.id.editTextPassword);
-        buttonLogin = findViewById(R.id.buttonLogin);
+        buttonLogin      = findViewById(R.id.buttonLogin);
 
         buttonLogin.setOnClickListener(v -> {
-            String login = editTextLogin.getText().toString().trim();
+            String login    = editTextLogin.getText().toString().trim();
             String password = editTextPassword.getText().toString().trim();
 
             if (TextUtils.isEmpty(login) || TextUtils.isEmpty(password)) {
@@ -45,6 +62,7 @@ public class LoginActivity extends AppCompatActivity {
             doLogin(login, password);
         });
     }
+
 
     private void doLogin(String login, String password) {
         LoginRequest request = new LoginRequest(login, password);

@@ -7,6 +7,7 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.util.Patterns;
 import android.view.View;
+import android.view.WindowManager;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.Button;
@@ -28,7 +29,7 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-public class RegisterActivity extends AppCompatActivity {
+public class RegisterActivity extends ImmersiveActivity {
 
     private EditText usernameEditText, emailEditText, passwordEditText, confirmPasswordEditText;
     private Button registerButton;
@@ -40,10 +41,10 @@ public class RegisterActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        // Якщо користувач уже залогінений — в головний екран
         SharedPreferences prefs = getSharedPreferences("MyAppPrefs", MODE_PRIVATE);
         String accessToken = prefs.getString("accessToken", null);
-        String username = prefs.getString("username", null);
-
+        String username    = prefs.getString("username", null);
         if (accessToken != null && username != null) {
             startActivity(new Intent(RegisterActivity.this, MainActivity.class));
             finish();
@@ -52,34 +53,58 @@ public class RegisterActivity extends AppCompatActivity {
 
         setContentView(R.layout.activity_register);
 
-        usernameEditText = findViewById(R.id.editTextUsername);
-        emailEditText = findViewById(R.id.editTextEmail);
-        passwordEditText = findViewById(R.id.editTextPassword);
+        // Клавіатура "підштовхує" контент
+        getWindow().setSoftInputMode(
+                WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
+                        | WindowManager.LayoutParams.SOFT_INPUT_STATE_HIDDEN
+        );
+
+        // Підкладаємо IMEInsets у корінь (NestedScrollView або інший контейнер)
+        View root = findViewById(R.id.register_root);
+        if (root == null) root = findViewById(android.R.id.content);
+        applyImePadding(root);
+        if (!(root instanceof androidx.core.widget.NestedScrollView)) {
+            // Якщо корінь не скролиться – піднімаємо кнопку над клавіатурою
+            View btn = findViewById(R.id.buttonRegister);
+            if (btn != null) applyImeMargin(btn);
+        }
+
+        // Ініціалізація вьюх
+        usernameEditText        = findViewById(R.id.editTextUsername);
+        emailEditText           = findViewById(R.id.editTextEmail);
+        passwordEditText        = findViewById(R.id.editTextPassword);
         confirmPasswordEditText = findViewById(R.id.editTextConfirmPassword);
-        showPasswordCheckBox = findViewById(R.id.checkboxShowPassword);
-        registerButton = findViewById(R.id.buttonRegister);
-        loginLink = findViewById(R.id.textLoginLink);
-        registerCard = findViewById(R.id.registerCard);
+        showPasswordCheckBox    = findViewById(R.id.checkboxShowPassword);
+        registerButton          = findViewById(R.id.buttonRegister);
+        loginLink               = findViewById(R.id.textLoginLink);
+        registerCard            = findViewById(R.id.registerCard);
 
         loginLink.setOnClickListener(v -> {
             startActivity(new Intent(RegisterActivity.this, LoginActivity.class));
             finish();
         });
 
+        // Показ/приховування пароля (без зміни inputType)
         showPasswordCheckBox.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            int inputType = isChecked ? android.text.InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD : android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD;
-            passwordEditText.setInputType(inputType);
-            confirmPasswordEditText.setInputType(inputType);
+            if (isChecked) {
+                passwordEditText.setTransformationMethod(android.text.method.HideReturnsTransformationMethod.getInstance());
+                confirmPasswordEditText.setTransformationMethod(android.text.method.HideReturnsTransformationMethod.getInstance());
+            } else {
+                passwordEditText.setTransformationMethod(android.text.method.PasswordTransformationMethod.getInstance());
+                confirmPasswordEditText.setTransformationMethod(android.text.method.PasswordTransformationMethod.getInstance());
+            }
+            passwordEditText.setSelection(passwordEditText.getText().length());
+            confirmPasswordEditText.setSelection(confirmPasswordEditText.getText().length());
         });
 
         registerButton.setOnClickListener(v -> {
-            String usernameInput = usernameEditText.getText().toString().trim();
-            String email = emailEditText.getText().toString().trim();
-            String password = passwordEditText.getText().toString().trim();
+            String usernameInput   = usernameEditText.getText().toString().trim();
+            String email           = emailEditText.getText().toString().trim();
+            String password        = passwordEditText.getText().toString().trim();
             String confirmPassword = confirmPasswordEditText.getText().toString().trim();
 
-            if (TextUtils.isEmpty(usernameInput) || TextUtils.isEmpty(email) ||
-                    TextUtils.isEmpty(password) || TextUtils.isEmpty(confirmPassword)) {
+            if (TextUtils.isEmpty(usernameInput) || TextUtils.isEmpty(email)
+                    || TextUtils.isEmpty(password) || TextUtils.isEmpty(confirmPassword)) {
                 animateError();
                 Toast.makeText(RegisterActivity.this, "Заповніть всі поля", Toast.LENGTH_SHORT).show();
                 return;
@@ -100,6 +125,7 @@ public class RegisterActivity extends AppCompatActivity {
             registerUser(usernameInput, email, password);
         });
     }
+
 
     private void animateError() {
         Animation shake = AnimationUtils.loadAnimation(this, R.anim.shake);

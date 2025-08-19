@@ -54,6 +54,8 @@ public class BleManager {
     private static final String NAME_PREFIX = "ESP32_";
     private static final int DEFAULT_SCAN_TIMEOUT_MS = 3000;
 
+    private boolean pWifiOnly = false;
+
     private static final UUID SERVICE_UUID =
             UUID.fromString("12345678-1234-1234-1234-123456789abc");
     private static final UUID CHARACTERISTIC_UUID =
@@ -359,17 +361,47 @@ public class BleManager {
     }
 
     // ---------- Шифрування ----------
+    // ЗАМІНИ цей метод у кінці класу
     private String encryptPassword(String password) {
         try {
             String key = "my-secret-key-12"; // 16 байт = AES-128
-            SecretKeySpec secretKey = new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "AES");
-            Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
-            cipher.init(Cipher.ENCRYPT_MODE, secretKey);
+            javax.crypto.spec.SecretKeySpec secretKey =
+                    new javax.crypto.spec.SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "AES");
+            javax.crypto.spec.IvParameterSpec iv =
+                    new javax.crypto.spec.IvParameterSpec(new byte[16]); // 16 нулів
+            javax.crypto.Cipher cipher = javax.crypto.Cipher.getInstance("AES/CBC/PKCS5Padding");
+            cipher.init(javax.crypto.Cipher.ENCRYPT_MODE, secretKey, iv);
             byte[] enc = cipher.doFinal(password.getBytes(StandardCharsets.UTF_8));
             return Base64.encodeToString(enc, Base64.NO_WRAP);
         } catch (Exception e) {
             Log.e(TAG, "encryptPassword error", e);
             return password; // fallback
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    public void sendWifiPatchViaDevice(BluetoothDevice device, String ssid, String password) {
+        if (device == null) { toast("BLE пристрій не вибрано"); return; }
+        if (!isBluetoothEnabled()) { toast("Увімкніть Bluetooth"); return; }
+        if (!hasAllBlePermissions()) { toast("Немає дозволів BLE"); return; }
+
+        selectedDevice = device;
+        cleanupGattOnly();
+
+        // лишаємо тільки Wi-Fi, інше не чіпаємо
+        pRoomName = null;
+        pImageName = null;
+        pUsername = null;
+        pReset = false;
+        pSsid = ssid;
+        pPassword = password;
+        pWifiOnly = true;
+
+        try {
+            gatt = selectedDevice.connectGatt(appCtx, false, gattCb);
+        } catch (SecurityException se) {
+            Log.e(TAG, "connectGatt SecurityException", se);
+            toast("Помилка підключення");
         }
     }
 }
