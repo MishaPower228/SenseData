@@ -1,24 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:padding="20dp"
-    android:orientation="vertical"
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content">
+    android:padding="20dp" android:orientation="vertical"
+    android:layout_width="match_parent" android:layout_height="wrap_content">
 
     <EditText
         android:id="@+id/etSsid"
-        android:hint="SSID"
-        android:inputType="text"
-        android:maxLines="1"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"/>
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:hint="Wi-Fi SSID"/>
 
     <EditText
         android:id="@+id/etPass"
-        android:hint="Пароль"
-        android:inputType="textPassword"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
-        android:maxLines="1"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"/>
+        android:hint="Wi-Fi Пароль" android:inputType="textPassword"/>
 </LinearLayout>

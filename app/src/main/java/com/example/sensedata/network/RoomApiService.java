@@ -30,6 +30,14 @@ public interface RoomApiService {
     @GET("DisplayData/byUser/{userId}")
     Call<List<RoomWithSensorDto>> getAllRooms(@Path("userId") int userId);
 
-    @PUT("api/displaydata/ownership")
+    @PUT("sensordata/ownership")
     Call<Void> updateOwnership(@Body SensorOwnershipUpdateDto body);
+
+    // DELETE /ownership/{chipId}/user/{userId}
+    @retrofit2.http.DELETE("sensordata/ownership/{chipId}/user/{userId}")
+    Call<Void> deleteOwnership(
+            @retrofit2.http.Path("chipId") String chipId,
+            @retrofit2.http.Path("userId") int userId
+    );
+
 }
