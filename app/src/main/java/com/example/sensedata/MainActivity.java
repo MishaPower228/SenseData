@@ -6,6 +6,7 @@ import android.graphics.Paint;
 import android.graphics.Typeface;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Looper;
 import android.text.SpannableString;
 import android.text.style.StyleSpan;
 import android.util.Log;
@@ -16,6 +17,8 @@ import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
+import androidx.appcompat.app.AlertDialog;
+import android.content.DialogInterface;
 
 import androidx.activity.EdgeToEdge;
 import androidx.activity.result.ActivityResultLauncher;
@@ -417,101 +420,144 @@ public class MainActivity extends ImmersiveActivity {
                 .show();
     }
 
-
     private void doPutUpdateOwnership(String chipId, String newName, String newImage) {
-        if (chipId == null || chipId.trim().isEmpty()) {
-            android.util.Log.e("PUT_UPDATE", "chipId порожній. roomName=" + newName + " image=" + newImage);
-            android.widget.Toast.makeText(this, "Помилка: chipId порожній у вибраній кімнаті", android.widget.Toast.LENGTH_LONG).show();
-            return;
-        }
+        RoomApiService api = ApiClientMain.getClient(this).create(RoomApiService.class);
+        SensorOwnershipUpdateDto body = new SensorOwnershipUpdateDto(chipId, newName, newImage);
 
-        com.example.sensedata.network.RoomApiService api =
-                com.example.sensedata.network.ApiClientMain.getClient(this).create(com.example.sensedata.network.RoomApiService.class);
-
-        com.example.sensedata.model.SensorOwnershipUpdateDto body =
-                new com.example.sensedata.model.SensorOwnershipUpdateDto(chipId, newName, newImage);
-
-        api.updateOwnership(body).enqueue(new retrofit2.Callback<Void>() {
+        String ifMatch = getEtagForChip(chipId); // може бути null — бек прийме без передумови
+        api.updateOwnership(ifMatch, body).enqueue(new retrofit2.Callback<Void>() {
             @Override public void onResponse(retrofit2.Call<Void> call, retrofit2.Response<Void> resp) {
                 if (resp.isSuccessful()) {
-                    // локально оновлюємо список (як у тебе вже зроблено)
-                    java.util.List<com.example.sensedata.model.RoomWithSensorDto> updated =
-                            new java.util.ArrayList<>(roomAdapter.getCurrentList());
+                    // 204 No Content, збережемо новий ETag, якщо прийшов
+                    String etag = resp.headers().get("ETag");
+                    if (etag != null) saveEtagForChip(chipId, etag);
+
+                    // локально оновлюємо картку
+                    List<RoomWithSensorDto> updated = new ArrayList<>(roomAdapter.getCurrentList());
                     for (int i = 0; i < updated.size(); i++) {
-                        var r = updated.get(i);
+                        RoomWithSensorDto r = updated.get(i);
                         if (r.getChipId()!=null && r.getChipId().equalsIgnoreCase(chipId)) {
-                            updated.set(i, new com.example.sensedata.model.RoomWithSensorDto(
-                                    r.getId(), r.getChipId(), newName, newImage, r.getTemperature(), r.getHumidity()
+                            updated.set(i, new RoomWithSensorDto(
+                                    r.getId(), r.getChipId(), newName, newImage,
+                                    r.getTemperature(), r.getHumidity()
                             ));
                             break;
                         }
                     }
                     roomAdapter.submitList(updated);
-                    android.widget.Toast.makeText(MainActivity.this, "Оновлено", android.widget.Toast.LENGTH_SHORT).show();
+                    Toast.makeText(MainActivity.this, "Оновлено", Toast.LENGTH_SHORT).show();
+
+                    // 🔁 додатково підтягнемо з сервера (щоб вирівняти стани/версії)
+                    refreshRoomsData();
+                    return;
+                }
+
+                // помилки
+                int code = resp.code();
+                String serverMsg = null;
+                try { if (resp.errorBody()!=null) serverMsg = resp.errorBody().string(); } catch (Exception ignore) {}
+
+                if (code == 412) {
+                    Toast.makeText(MainActivity.this, "Дані змінені в іншому місці (412). Оновлюю список…", Toast.LENGTH_LONG).show();
+                    refreshRoomsData();
+                } else if (code == 404) {
+                    Toast.makeText(MainActivity.this, "Пристрій не знайдено (404). Оновлюю список…", Toast.LENGTH_LONG).show();
+                    refreshRoomsData();
+                } else if (code == 409) {
+                    Toast.makeText(MainActivity.this, "Конфлікт (409): " + (serverMsg!=null?serverMsg:""), Toast.LENGTH_LONG).show();
+                    refreshRoomsData();
                 } else {
-                    String msg = null;
-                    try { if (resp.errorBody()!=null) msg = resp.errorBody().string(); } catch (Exception ignore) {}
-                    android.util.Log.e("PUT_UPDATE", "code=" + resp.code() + " body=" + msg);
-                    android.widget.Toast.makeText(MainActivity.this, "Помилка PUT: " + resp.code() + (msg!=null?(" • "+msg):""), android.widget.Toast.LENGTH_LONG).show();
+                    Toast.makeText(MainActivity.this, "Помилка PUT: " + code + (serverMsg!=null?(" • "+serverMsg):""), Toast.LENGTH_LONG).show();
                 }
             }
+
             @Override public void onFailure(retrofit2.Call<Void> call, Throwable t) {
-                android.util.Log.e("PUT_UPDATE", "fail", t);
-                android.widget.Toast.makeText(MainActivity.this, "PUT збій: " + t.getMessage(), android.widget.Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "PUT збій: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
     }
-
 
     private void showWifiDialog(RoomWithSensorDto room) {
         View view = getLayoutInflater().inflate(R.layout.dialog_wifi, null);
         EditText etSsid = view.findViewById(R.id.etSsid);
         EditText etPass = view.findViewById(R.id.etPass);
+        TextView tvStatus = view.findViewById(R.id.tvWifiStatus);
+        com.google.android.material.progressindicator.CircularProgressIndicator prog =
+                view.findViewById(R.id.progressWifi);
 
-        new MaterialAlertDialogBuilder(this)
+        // Створюємо саме ANDROIDX AlertDialog
+        MaterialAlertDialogBuilder b = new MaterialAlertDialogBuilder(this)
                 .setTitle("Оновити Wi-Fi")
                 .setView(view)
                 .setNegativeButton("Скасувати", null)
-                .setPositiveButton("Надіслати", (d, w) -> {
-                    String ssid = etSsid.getText()==null ? "" : etSsid.getText().toString().trim();
-                    String pass = etPass.getText()==null ? "" : etPass.getText().toString();
-                    if (ssid.isEmpty()) { etSsid.setError("Введіть SSID"); return; }
-                    sendWifiForRoom(room, ssid, pass); // твій існуючий BLE-метод
-                })
-                .show();
-    }
+                .setPositiveButton("Надіслати", null);
 
-    private void confirmAndDeleteRoom(RoomWithSensorDto room) {
-        new MaterialAlertDialogBuilder(this)
-                .setTitle("Видалити кімнату?")
-                .setMessage("Це відв'яже пристрій від вашого акаунта.")
-                .setNegativeButton("Скасувати", null)
-                .setPositiveButton("Видалити", (d, w) -> doDeleteRoom(room))
-                .show();
-    }
+        final AlertDialog dialog = b.create(); // <-- androidx.appcompat.app.AlertDialog
+        dialog.show();
 
-    private void doDeleteRoom(RoomWithSensorDto room) {
-        int userId = getSavedUserId();
-        if (userId == -1 || room.getChipId() == null) {
-            Toast.makeText(this, "Немає userId або chipId", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        RoomApiService api = ApiClientMain.getClient(this).create(RoomApiService.class);
-        api.deleteOwnership(room.getChipId(), userId).enqueue(new Callback<Void>() {
-            @Override public void onResponse(Call<Void> call, Response<Void> resp) {
-                if (resp.isSuccessful()) {
-                    List<RoomWithSensorDto> updated = new ArrayList<>(roomAdapter.getCurrentList());
-                    updated.removeIf(r -> r.getChipId()!=null &&
-                            r.getChipId().equalsIgnoreCase(room.getChipId()));
-                    roomAdapter.submitList(updated);
-                    Toast.makeText(MainActivity.this, "Кімнату видалено", Toast.LENGTH_SHORT).show();
-                } else {
-                    Toast.makeText(MainActivity.this, "Помилка DELETE: " + resp.code(), Toast.LENGTH_SHORT).show();
+        // Дістаємо кнопки через DialogInterface.*
+        final android.widget.Button btnPos = dialog.getButton(DialogInterface.BUTTON_POSITIVE);
+        final android.widget.Button btnNeg = dialog.getButton(DialogInterface.BUTTON_NEGATIVE);
+
+        // Хелпери "busy"/"idle" для UI
+        Runnable setBusyTrue = () -> {
+            btnPos.setEnabled(false);
+            btnNeg.setEnabled(false);
+            etSsid.setEnabled(false);
+            etPass.setEnabled(false);
+            tvStatus.setText("Сканую ESP32…");
+            tvStatus.setVisibility(View.VISIBLE);
+            prog.setVisibility(View.VISIBLE);
+        };
+        Runnable setBusyFalse = () -> {
+            btnPos.setEnabled(true);
+            btnNeg.setEnabled(true);
+            etSsid.setEnabled(true);
+            etPass.setEnabled(true);
+            tvStatus.setVisibility(View.GONE);
+            prog.setVisibility(View.GONE);
+        };
+
+        btnPos.setOnClickListener(v -> {
+            String ssid = etSsid.getText() == null ? "" : etSsid.getText().toString().trim();
+            String pass = etPass.getText() == null ? "" : etPass.getText().toString();
+            if (ssid.isEmpty()) { etSsid.setError("Введіть SSID"); return; }
+
+            // BLE prechecks
+            if (!bleManager.isBluetoothSupported()) { Toast.makeText(this,"BLE недоступний",Toast.LENGTH_SHORT).show(); return; }
+            if (!bleManager.isBluetoothEnabled()) { startActivity(bleManager.getEnableBluetoothIntent()); return; }
+            if (!bleManager.hasAllBlePermissions()) { bleManager.requestAllBlePermissions(this, 42); return; }
+
+            String chipId = room.getChipId()==null ? "" : room.getChipId().trim().toUpperCase(Locale.ROOT);
+            if (chipId.length() < 6) { Toast.makeText(this,"chipId некоректний",Toast.LENGTH_SHORT).show(); return; }
+            String targetName = "ESP32_" + chipId;
+
+            setBusyTrue.run();
+            tvStatus.setText("Сканую ESP32 (" + targetName + ")…");
+
+            bleManager.startBleScan(4000, (names, devices) -> runOnUiThread(() -> {
+                android.bluetooth.BluetoothDevice target = null;
+                for (int i = 0; i < names.size(); i++) {
+                    if (targetName.equalsIgnoreCase(names.get(i))) { target = devices.get(i); break; }
                 }
-            }
-            @Override public void onFailure(Call<Void> call, Throwable t) {
-                Toast.makeText(MainActivity.this, "DELETE збій: " + t.getMessage(), Toast.LENGTH_SHORT).show();
-            }
+                if (target == null) {
+                    tvStatus.setText("ESP " + targetName + " не знайдено");
+                    setBusyFalse.run();
+                    return;
+                }
+
+                tvStatus.setText("Надсилаю Wi-Fi на " + targetName + "…");
+
+                // Якщо у BleManager є колбек успіх/помилка — виклич у ньому setBusyFalse.run() + dialog.dismiss()
+                bleManager.sendWifiPatchViaDevice(target, ssid, pass);
+
+                // Fallback: закриваємо через 2с, якщо немає колбеків
+                new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                    setBusyFalse.run();
+                    Toast.makeText(MainActivity.this, "Команда Wi-Fi надіслана", Toast.LENGTH_SHORT).show();
+                    dialog.dismiss();
+                }, 2000);
+            }));
         });
     }
 
@@ -549,4 +595,62 @@ public class MainActivity extends ImmersiveActivity {
             bleManager.sendWifiPatchViaDevice(target, ssid, pass);
         });
     }
+    private void confirmAndDeleteRoom(RoomWithSensorDto room) {
+        new MaterialAlertDialogBuilder(this)
+                .setTitle("Видалити кімнату?")
+                .setMessage("Це відв'яже пристрій від вашого акаунта.")
+                .setNegativeButton("Скасувати", null)
+                .setPositiveButton("Видалити", (d, w) -> doDeleteRoom(room))
+                .show();
+    }
+
+    private String getEtagForChip(String chipId) {
+        return getSharedPreferences("etag_store", MODE_PRIVATE)
+                .getString("etag_" + chipId, null);
+    }
+
+    private void saveEtagForChip(String chipId, String etag) {
+        if (etag == null) return;
+        getSharedPreferences("etag_store", MODE_PRIVATE)
+                .edit().putString("etag_" + chipId, etag).apply();
+    }
+
+    private void removeEtagForChip(String chipId) {
+        getSharedPreferences("etag_store", MODE_PRIVATE)
+                .edit().remove("etag_" + chipId).apply();
+    }
+
+    private void doDeleteRoom(RoomWithSensorDto room) {
+        int userId = getSavedUserId();
+        if (userId == -1 || room.getChipId() == null) {
+            Toast.makeText(this, "Немає userId або chipId", Toast.LENGTH_SHORT).show(); return;
+        }
+        RoomApiService api = ApiClientMain.getClient(this).create(RoomApiService.class);
+        api.deleteOwnership(room.getChipId(), userId).enqueue(new Callback<Void>() {
+            @Override public void onResponse(Call<Void> call, Response<Void> resp) {
+                if (resp.isSuccessful()) {
+                    // локально
+                    List<RoomWithSensorDto> updated = new ArrayList<>(roomAdapter.getCurrentList());
+                    updated.removeIf(r -> r.getChipId()!=null &&
+                            r.getChipId().equalsIgnoreCase(room.getChipId()));
+                    roomAdapter.submitList(updated);
+
+                    // прибираємо ETag для цього chipId
+                    removeEtagForChip(room.getChipId());
+
+                    Toast.makeText(MainActivity.this, "Кімнату видалено", Toast.LENGTH_SHORT).show();
+
+                    // 🔁 підтягнути список з сервера
+                    refreshRoomsData();
+                } else {
+                    Toast.makeText(MainActivity.this, "Помилка DELETE: " + resp.code(), Toast.LENGTH_SHORT).show();
+                }
+            }
+            @Override public void onFailure(Call<Void> call, Throwable t) {
+                Toast.makeText(MainActivity.this, "DELETE збій: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+
 }
