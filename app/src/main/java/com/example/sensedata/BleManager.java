@@ -39,23 +39,31 @@ import java.util.Set;
 import java.util.UUID;
 
 import javax.crypto.Cipher;
+import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
 public class BleManager {
 
-    // ======== Публічні колбеки ========
+    // -------- Публічні колбеки --------
     public interface BleScanCallback {
         void onDevicesFound(List<String> deviceNames, List<BluetoothDevice> devices);
     }
-    public interface ChipIdListener { void onChipId(String chipId); }
 
-    // ======== Константи ========
+    public interface ChipIdListener {
+        void onChipId(String chipId);
+    }
+
+    public interface WifiPatchCallback {
+        void onSuccess();
+        void onError(String message);
+    }
+
+    // -------- Константи --------
     private static final String TAG = "BLE";
     private static final String NAME_PREFIX = "ESP32_";
     private static final int DEFAULT_SCAN_TIMEOUT_MS = 3000;
 
-    private boolean pWifiOnly = false;
-
+    // UUID сервісу/характеристики на ESP32 (залиш свої)
     private static final UUID SERVICE_UUID =
             UUID.fromString("12345678-1234-1234-1234-123456789abc");
     private static final UUID CHARACTERISTIC_UUID =
@@ -63,30 +71,34 @@ public class BleManager {
     private static final UUID CCCD_UUID =
             UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
 
-    // ======== Системні об’єкти ========
+    // -------- Системні об’єкти --------
     private final Context appCtx;
     private final Handler main = new Handler(Looper.getMainLooper());
     private final BluetoothAdapter btAdapter;
     private final BluetoothLeScanner btScanner;
 
-    // ======== Скан ========
+    // -------- Скан --------
     private final List<BluetoothDevice> foundDevices = new ArrayList<>();
     private final List<String> foundNames = new ArrayList<>();
     private boolean isScanning = false;
 
-    // ======== GATT ========
+    // -------- GATT --------
     private BluetoothGatt gatt;
     private BluetoothGattCharacteristic ioChar;
     private BluetoothDevice selectedDevice;
 
-    // ======== Pending-конфіг ========
+    // -------- Стани Wi-Fi патчу --------
+    @Nullable private WifiPatchCallback wifiCallback;
+    private boolean writeInFlight = false;
+    private boolean writeSucceeded = false;
+    private boolean pWifiOnly = false;
+
+    // -------- Pending-конфіг --------
     private String pRoomName, pImageName, pSsid, pPassword, pUsername;
     private boolean pReset;
 
-    // ======== Колбеки ========
+    // -------- ChipId --------
     private ChipIdListener chipIdListener;
-
-    // ======== Debounce chipId ========
     private final Set<String> receivedChipIds = new HashSet<>();
 
     public BleManager(Context context) {
@@ -96,7 +108,7 @@ public class BleManager {
         this.btScanner = (btAdapter != null) ? btAdapter.getBluetoothLeScanner() : null;
     }
 
-    // ---------- Перевірки/допоміжні ----------
+    // ======== Перевірки/допоміжні ========
     public boolean isBluetoothSupported() { return btAdapter != null; }
 
     public boolean isBluetoothEnabled() { return btAdapter != null && btAdapter.isEnabled(); }
@@ -106,6 +118,7 @@ public class BleManager {
             return has(Manifest.permission.BLUETOOTH_SCAN) &&
                     has(Manifest.permission.BLUETOOTH_CONNECT);
         } else {
+            // Для скану на старих SDK достатньо Location
             return has(Manifest.permission.ACCESS_FINE_LOCATION) ||
                     has(Manifest.permission.ACCESS_COARSE_LOCATION);
         }
@@ -136,10 +149,10 @@ public class BleManager {
         main.post(() -> Toast.makeText(appCtx, msg, Toast.LENGTH_SHORT).show());
     }
 
-    // ---------- Скан ----------
+    // ======== Скан ========
     public void startBleScan(BleScanCallback cb) { startBleScan(DEFAULT_SCAN_TIMEOUT_MS, cb); }
 
-    @SuppressLint("MissingPermission") // усі виклики нижче виконуються лише після рантайм-перевірок
+    @SuppressLint("MissingPermission")
     public void startBleScan(int timeoutMs, BleScanCallback cb) {
         if (!isBluetoothSupported()) { toast("BLE недоступний"); return; }
         if (!isBluetoothEnabled())   { toast("Увімкніть Bluetooth"); return; }
@@ -153,7 +166,7 @@ public class BleManager {
         foundNames.clear();
 
         try {
-            btScanner.startScan(scanCb); // lint приглушено анотацією
+            btScanner.startScan(scanCb);
         } catch (SecurityException se) {
             Log.e(TAG, "startScan SecurityException", se);
             toast("Помилка доступу до BLE-сканера");
@@ -188,7 +201,6 @@ public class BleManager {
             if (dev == null) return;
             if (!has(Manifest.permission.BLUETOOTH_CONNECT)) return;
 
-            // ці виклики вимагають BLUETOOTH_CONNECT — ми перевірили вище
             String name = dev.getName();
             if (name == null || !name.startsWith(NAME_PREFIX)) return;
 
@@ -204,7 +216,7 @@ public class BleManager {
         public void onScanFailed(int errorCode) { toast("Помилка сканування: " + errorCode); }
     };
 
-    // ---------- Підключення / надсилання конфіг ----------
+    // ======== Повна конфігурація (створення кімнати) ========
     @SuppressLint("MissingPermission")
     public void sendConfigToEsp32ViaDevice(BluetoothDevice device,
                                            String roomName, String imageName,
@@ -215,7 +227,7 @@ public class BleManager {
         if (!hasAllBlePermissions()) { toast("Немає дозволів BLE"); return; }
 
         selectedDevice = device;
-        cleanupGattOnly(); // закриємо попередній конект
+        cleanupGattOnly();
 
         pRoomName = roomName;
         pImageName = imageName;
@@ -224,38 +236,102 @@ public class BleManager {
         pUsername = username;
         pReset = reset;
 
+        pWifiOnly = false; // важливо
+        writeInFlight = false;
+        writeSucceeded = false;
+
         try {
-            gatt = selectedDevice.connectGatt(appCtx, false, gattCb); // вимагає CONNECT — перевірили
+            gatt = selectedDevice.connectGatt(appCtx, false, gattCb);
         } catch (SecurityException se) {
             Log.e(TAG, "connectGatt SecurityException", se);
             toast("Помилка підключення");
         }
     }
 
+    // ======== Оновлення лише Wi-Fi (із колбеком) ========
+    @SuppressLint("MissingPermission")
+    public void sendWifiPatchViaDevice(BluetoothDevice device, String ssid, String password) {
+        sendWifiPatchViaDevice(device, ssid, password, null);
+    }
+
+    @SuppressLint("MissingPermission")
+    public void sendWifiPatchViaDevice(BluetoothDevice device,
+                                       String ssid,
+                                       String password,
+                                       @Nullable WifiPatchCallback cb) {
+        if (device == null) { toast("BLE пристрій не вибрано"); return; }
+        if (!isBluetoothEnabled()) { toast("Увімкніть Bluetooth"); return; }
+        if (!hasAllBlePermissions()) { toast("Немає дозволів BLE"); return; }
+
+        selectedDevice = device;
+        cleanupGattOnly();
+
+        // Лише Wi-Fi
+        pRoomName = null;
+        pImageName = null;
+        pUsername = null;
+        pReset = false;
+        pSsid = ssid;
+        pPassword = password;
+        pWifiOnly = true;
+
+        wifiCallback = cb;
+        writeInFlight = false;
+        writeSucceeded = false;
+
+        try {
+            gatt = selectedDevice.connectGatt(appCtx, false, gattCb);
+        } catch (SecurityException se) {
+            Log.e(TAG, "connectGatt SecurityException", se);
+            toast("Помилка підключення");
+            completeWifiError("Помилка підключення (SEC)");
+        }
+    }
+
+    // ======== GATT callback ========
     private final BluetoothGattCallback gattCb = new BluetoothGattCallback() {
 
         @Override @SuppressLint("MissingPermission")
         public void onConnectionStateChange(BluetoothGatt g, int status, int newState) {
             if (newState == BluetoothProfile.STATE_CONNECTED) {
-                g.discoverServices(); // CONNECT перевірено в sendConfigToEsp32ViaDevice
+                g.discoverServices();
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-                closeGatt(g);
+                if (pWifiOnly && !writeSucceeded) {
+                    completeWifiError(status == BluetoothGatt.GATT_SUCCESS
+                            ? "Роз'єднано до запису"
+                            : "Роз'єднано, статус=" + status);
+                }
+                main.postDelayed(() -> closeGatt(g), 200);
             }
         }
 
         @Override @SuppressLint("MissingPermission")
         public void onServicesDiscovered(BluetoothGatt g, int status) {
+            if (status != BluetoothGatt.GATT_SUCCESS) {
+                if (pWifiOnly) completeWifiError("onServicesDiscovered=" + status);
+                return;
+            }
             BluetoothGattService svc = g.getService(SERVICE_UUID);
-            if (svc == null) { toast("Сервіс ESP32 не знайдено"); return; }
+            if (svc == null) {
+                if (pWifiOnly) completeWifiError("Сервіс не знайдено");
+                return;
+            }
             ioChar = svc.getCharacteristic(CHARACTERISTIC_UUID);
-            if (ioChar == null) { toast("Характеристику ESP32 не знайдено"); return; }
+            if (ioChar == null) {
+                if (pWifiOnly) completeWifiError("Характеристика не знайдена");
+                return;
+            }
 
             boolean ok = g.setCharacteristicNotification(ioChar, true);
             Log.d(TAG, "setCharacteristicNotification=" + ok);
+
             BluetoothGattDescriptor cccd = ioChar.getDescriptor(CCCD_UUID);
             if (cccd != null) {
                 cccd.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
-                g.writeDescriptor(cccd); // ➜ onDescriptorWrite
+                boolean queued = g.writeDescriptor(cccd); // → onDescriptorWrite
+                if (!queued) {
+                    sendConfigNow(g);
+                }
             } else {
                 sendConfigNow(g);
             }
@@ -263,12 +339,31 @@ public class BleManager {
 
         @Override @SuppressLint("MissingPermission")
         public void onDescriptorWrite(BluetoothGatt g, BluetoothGattDescriptor d, int status) {
-            if (CCCD_UUID.equals(d.getUuid())) sendConfigNow(g);
+            if (CCCD_UUID.equals(d.getUuid())) {
+                if (status != BluetoothGatt.GATT_SUCCESS) {
+                    Log.w(TAG, "CCCD write status=" + status);
+                }
+                sendConfigNow(g);
+            }
         }
 
         @Override
         public void onCharacteristicWrite(BluetoothGatt g, BluetoothGattCharacteristic c, int status) {
-            if (status != BluetoothGatt.GATT_SUCCESS) toast("Помилка надсилання даних");
+            if (c != ioChar) return;
+
+            writeInFlight = false;
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                writeSucceeded = true;
+                if (pWifiOnly) {
+                    completeWifiSuccess();
+                    main.postDelayed(() -> closeGatt(g), 500);
+                }
+            } else {
+                if (pWifiOnly) {
+                    completeWifiError("onCharacteristicWrite=" + status);
+                    main.postDelayed(() -> closeGatt(g), 500);
+                }
+            }
         }
 
         @Override
@@ -276,42 +371,56 @@ public class BleManager {
             String value = new String(c.getValue(), StandardCharsets.UTF_8).trim();
             if (value.isEmpty()) return;
 
-            if (!receivedChipIds.add(value)) return; // debounce
-
-            if (chipIdListener != null) chipIdListener.onChipId(value);
-
-            main.postDelayed(() -> {
-                closeGatt(g);   // без прямого g.disconnect() тут
-            }, 1000);
+            // У повному сценарії очікуємо chipId
+            if (!pWifiOnly) {
+                if (!receivedChipIds.add(value)) return; // debounce
+                if (chipIdListener != null) chipIdListener.onChipId(value);
+                main.postDelayed(() -> closeGatt(g), 1000);
+            }
         }
     };
 
+    // ======== Надсилання конфігу ========
     @SuppressLint("MissingPermission")
     private void sendConfigNow(@Nullable BluetoothGatt g) {
-        if (g == null || ioChar == null) { toast("BLE не готовий"); return; }
+        if (g == null || ioChar == null) {
+            if (pWifiOnly) completeWifiError("BLE не готовий");
+            return;
+        }
 
         String encPwd = encryptPassword(pPassword);
         try {
             JSONObject json = new JSONObject();
-            json.put("roomName", pRoomName);
-            json.put("imageName", pImageName);
-            json.put("ssid", pSsid);
-            json.put("password", encPwd);
-            json.put("username", pUsername);
-            json.put("reset", pReset);
+
+            if (pWifiOnly) {
+                json.put("ssid", pSsid);
+                json.put("password", encPwd);
+            } else {
+                if (pRoomName != null)  json.put("roomName", pRoomName);
+                if (pImageName != null) json.put("imageName", pImageName);
+                if (pSsid != null)      json.put("ssid", pSsid);
+                if (pPassword != null)  json.put("password", encPwd);
+                if (pUsername != null)  json.put("username", pUsername);
+                json.put("reset", pReset);
+            }
 
             ioChar.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
             ioChar.setValue(json.toString().getBytes(StandardCharsets.UTF_8));
 
-            boolean ok = g.writeCharacteristic(ioChar); // CONNECT — перевірено раніше
-            Log.d(TAG, "writeCharacteristic=" + ok);
-            toast(ok ? "Дані надіслано ESP32" : "Помилка надсилання");
+            boolean queued = g.writeCharacteristic(ioChar);
+            writeInFlight = queued;
+            Log.d(TAG, "writeCharacteristic queued=" + queued);
+
+            if (!queued && pWifiOnly) {
+                completeWifiError("writeCharacteristic() повернув false");
+            }
         } catch (JSONException e) {
             Log.e(TAG, "JSON error", e);
+            if (pWifiOnly) completeWifiError("JSON помилка");
         }
     }
 
-    // ---------- Сервісні ----------
+    // ======== Сервісні ========
     public void setSelectedDevice(int index) {
         if (index >= 0 && index < foundDevices.size()) selectedDevice = foundDevices.get(index);
     }
@@ -342,35 +451,32 @@ public class BleManager {
         }
     }
 
-    @SuppressLint("MissingPermission")   // ми самі перевіряємо дозвіл всередині
+    @SuppressLint("MissingPermission")
     private void closeGatt(@Nullable BluetoothGatt g) {
         if (g == null) return;
 
-        // Перевірка BLUETOOTH_CONNECT перед небезпечними викликами
         if (ActivityCompat.checkSelfPermission(appCtx, Manifest.permission.BLUETOOTH_CONNECT)
                 == PackageManager.PERMISSION_GRANTED) {
             try { g.disconnect(); } catch (SecurityException ignored) {}
             try { g.close(); }      catch (SecurityException ignored) {}
+        } else {
+            try { g.close(); } catch (Exception ignored) {}
         }
 
-        // Обнулимо посилання навіть якщо прав немає — щоб не тримати стан
         if (g == this.gatt) {
             this.gatt = null;
             this.ioChar = null;
         }
     }
 
-    // ---------- Шифрування ----------
-    // ЗАМІНИ цей метод у кінці класу
+    // ======== Шифрування ========
     private String encryptPassword(String password) {
         try {
             String key = "my-secret-key-12"; // 16 байт = AES-128
-            javax.crypto.spec.SecretKeySpec secretKey =
-                    new javax.crypto.spec.SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "AES");
-            javax.crypto.spec.IvParameterSpec iv =
-                    new javax.crypto.spec.IvParameterSpec(new byte[16]); // 16 нулів
-            javax.crypto.Cipher cipher = javax.crypto.Cipher.getInstance("AES/CBC/PKCS5Padding");
-            cipher.init(javax.crypto.Cipher.ENCRYPT_MODE, secretKey, iv);
+            SecretKeySpec secretKey = new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "AES");
+            IvParameterSpec iv = new IvParameterSpec(new byte[16]); // 16 нулів
+            Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+            cipher.init(Cipher.ENCRYPT_MODE, secretKey, iv);
             byte[] enc = cipher.doFinal(password.getBytes(StandardCharsets.UTF_8));
             return Base64.encodeToString(enc, Base64.NO_WRAP);
         } catch (Exception e) {
@@ -379,29 +485,35 @@ public class BleManager {
         }
     }
 
-    @SuppressLint("MissingPermission")
-    public void sendWifiPatchViaDevice(BluetoothDevice device, String ssid, String password) {
-        if (device == null) { toast("BLE пристрій не вибрано"); return; }
-        if (!isBluetoothEnabled()) { toast("Увімкніть Bluetooth"); return; }
-        if (!hasAllBlePermissions()) { toast("Немає дозволів BLE"); return; }
+    // ======== Успіх/помилка Wi-Fi патчу ========
+    private void completeWifiSuccess() {
+        final WifiPatchCallback cb = wifiCallback;
+        // скидаємо стан ДО виклику колбека
+        wifiCallback = null;
+        pWifiOnly = false;
+        writeInFlight = false;
+        writeSucceeded = false;
 
-        selectedDevice = device;
-        cleanupGattOnly();
+        if (cb != null) {
+            main.post(cb::onSuccess);
+        } else {
+            Log.w(TAG, "WifiPatchCallback is null, success ignored");
+        }
+    }
 
-        // лишаємо тільки Wi-Fi, інше не чіпаємо
-        pRoomName = null;
-        pImageName = null;
-        pUsername = null;
-        pReset = false;
-        pSsid = ssid;
-        pPassword = password;
-        pWifiOnly = true;
+    private void completeWifiError(@Nullable String message) {
+        final WifiPatchCallback cb = wifiCallback;
+        // скидаємо стан ДО виклику колбека
+        wifiCallback = null;
+        pWifiOnly = false;
+        writeInFlight = false;
+        writeSucceeded = false;
 
-        try {
-            gatt = selectedDevice.connectGatt(appCtx, false, gattCb);
-        } catch (SecurityException se) {
-            Log.e(TAG, "connectGatt SecurityException", se);
-            toast("Помилка підключення");
+        if (cb != null) {
+            final String msg = (message != null) ? message : "BLE помилка";
+            main.post(() -> cb.onError(msg));
+        } else {
+            Log.w(TAG, "WifiPatchCallback is null, error ignored: " + message);
         }
     }
 }

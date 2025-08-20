@@ -36,6 +36,7 @@ import com.example.sensedata.network.RoomApiService;
 import com.example.sensedata.network.UserApiService;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.squareup.picasso.BuildConfig;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -64,6 +65,10 @@ public class MainActivity extends ImmersiveActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        if (!BuildConfig.DEBUG) {
+            ApiClientMain.setHttpLoggingEnabled(false); // вимкнути логи в релізі
+        }
 
         bleManager = new BleManager(this);
 
@@ -485,21 +490,17 @@ public class MainActivity extends ImmersiveActivity {
         com.google.android.material.progressindicator.CircularProgressIndicator prog =
                 view.findViewById(R.id.progressWifi);
 
-        // Створюємо саме ANDROIDX AlertDialog
-        MaterialAlertDialogBuilder b = new MaterialAlertDialogBuilder(this)
+        AlertDialog dialog = new MaterialAlertDialogBuilder(this)
                 .setTitle("Оновити Wi-Fi")
                 .setView(view)
                 .setNegativeButton("Скасувати", null)
-                .setPositiveButton("Надіслати", null);
-
-        final AlertDialog dialog = b.create(); // <-- androidx.appcompat.app.AlertDialog
+                .setPositiveButton("Надіслати", null)
+                .create();
         dialog.show();
 
-        // Дістаємо кнопки через DialogInterface.*
         final android.widget.Button btnPos = dialog.getButton(DialogInterface.BUTTON_POSITIVE);
         final android.widget.Button btnNeg = dialog.getButton(DialogInterface.BUTTON_NEGATIVE);
 
-        // Хелпери "busy"/"idle" для UI
         Runnable setBusyTrue = () -> {
             btnPos.setEnabled(false);
             btnNeg.setEnabled(false);
@@ -518,6 +519,11 @@ public class MainActivity extends ImmersiveActivity {
             prog.setVisibility(View.GONE);
         };
 
+        // на випадок закриття діалогу під час скану — зупинити скан
+        dialog.setOnDismissListener(d -> {
+            try { bleManager.stopScan(); } catch (Exception ignore) {}
+        });
+
         btnPos.setOnClickListener(v -> {
             String ssid = etSsid.getText() == null ? "" : etSsid.getText().toString().trim();
             String pass = etPass.getText() == null ? "" : etPass.getText().toString();
@@ -525,7 +531,7 @@ public class MainActivity extends ImmersiveActivity {
 
             // BLE prechecks
             if (!bleManager.isBluetoothSupported()) { Toast.makeText(this,"BLE недоступний",Toast.LENGTH_SHORT).show(); return; }
-            if (!bleManager.isBluetoothEnabled()) { startActivity(bleManager.getEnableBluetoothIntent()); return; }
+            if (!bleManager.isBluetoothEnabled())   { startActivity(bleManager.getEnableBluetoothIntent()); return; }
             if (!bleManager.hasAllBlePermissions()) { bleManager.requestAllBlePermissions(this, 42); return; }
 
             String chipId = room.getChipId()==null ? "" : room.getChipId().trim().toUpperCase(Locale.ROOT);
@@ -538,7 +544,10 @@ public class MainActivity extends ImmersiveActivity {
             bleManager.startBleScan(4000, (names, devices) -> runOnUiThread(() -> {
                 android.bluetooth.BluetoothDevice target = null;
                 for (int i = 0; i < names.size(); i++) {
-                    if (targetName.equalsIgnoreCase(names.get(i))) { target = devices.get(i); break; }
+                    if (targetName.equalsIgnoreCase(names.get(i))) {
+                        target = devices.get(i);
+                        break;
+                    }
                 }
                 if (target == null) {
                     tvStatus.setText("ESP " + targetName + " не знайдено");
@@ -548,15 +557,24 @@ public class MainActivity extends ImmersiveActivity {
 
                 tvStatus.setText("Надсилаю Wi-Fi на " + targetName + "…");
 
-                // Якщо у BleManager є колбек успіх/помилка — виклич у ньому setBusyFalse.run() + dialog.dismiss()
-                bleManager.sendWifiPatchViaDevice(target, ssid, pass);
+                // ТУТ — викликаємо новий метод з колбеком
+                bleManager.sendWifiPatchViaDevice(target, ssid, pass, new BleManager.WifiPatchCallback() {
+                    @Override public void onSuccess() {
+                        runOnUiThread(() -> {
+                            setBusyFalse.run();
+                            if (dialog.isShowing()) dialog.dismiss();  // ✅ перевірка
+                            Toast.makeText(MainActivity.this, "Wi-Fi успішно оновлено", Toast.LENGTH_SHORT).show();
+                            dialog.dismiss();
+                        });
+                    }
 
-                // Fallback: закриваємо через 2с, якщо немає колбеків
-                new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                    setBusyFalse.run();
-                    Toast.makeText(MainActivity.this, "Команда Wi-Fi надіслана", Toast.LENGTH_SHORT).show();
-                    dialog.dismiss();
-                }, 2000);
+                    @Override public void onError(String message) {
+                        runOnUiThread(() -> {
+                            tvStatus.setText(message == null ? "Помилка BLE" : message);
+                            setBusyFalse.run(); // лишаємо діалог відкритим, щоб користувач міг повторити
+                        });
+                    }
+                });
             }));
         });
     }
