@@ -1,52 +1,54 @@
 package com.example.sensedata;
 
-import android.content.Intent;
-import android.graphics.drawable.Drawable;
 import android.os.Bundle;
-import android.view.LayoutInflater;
 import android.view.MenuItem;
-import android.view.View;
-import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.content.res.AppCompatResources;
-import androidx.appcompat.widget.Toolbar;
-import androidx.core.content.ContextCompat;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
 
 import com.example.sensedata.model.SensorDataDTO;
 import com.example.sensedata.network.ApiClientMain;
 import com.example.sensedata.network.SensorDataApiService;
-import com.google.android.material.snackbar.Snackbar;
+import com.google.android.material.appbar.MaterialToolbar;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Locale;
-import java.util.Objects;
+
+import android.os.Handler;
+import android.os.Looper;
 
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-public class SensorDataActivity extends AppCompatActivity {
+public class SensorDataActivity extends ImmersiveActivity {
 
     public static final String EXTRA_CHIP_ID   = "extra_chip_id";
     public static final String EXTRA_ROOM_NAME = "extra_room_name";
+
+    private static final long REFRESH_INTERVAL_MS = 5 * 60 * 1000L; // 5 хв
 
     private String chipId;
     private String roomName;
 
     private ProgressBar progress;
+    private MaterialToolbar tb;
 
-    // посилання на TextView
+    // TextView
     private TextView tvTemp, tvHumi, tvPressure, tvAltitude,
             tvTempBme, tvHumiBme, tvGas, tvLight,
             tvMq2, tvMq2P, tvLightA, tvLightAP;
+
+    // автооновлення
+    private final Handler handler = new Handler(Looper.getMainLooper());
+    private final Runnable refreshRunnable = new Runnable() {
+        @Override public void run() {
+            loadLatest(false); // автооновлення — без прогрес-спінера
+            handler.postDelayed(this, REFRESH_INTERVAL_MS);
+        }
+    };
+    private volatile boolean isLoading = false;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -56,24 +58,11 @@ public class SensorDataActivity extends AppCompatActivity {
         chipId   = getIntent().getStringExtra(EXTRA_CHIP_ID);
         roomName = getIntent().getStringExtra(EXTRA_ROOM_NAME);
 
-        // --- MaterialToolbar (центрований тайтл, стрілка назад) ---
-        com.google.android.material.appbar.MaterialToolbar tb = findViewById(R.id.toolbar);
-        // setSupportActionBar не обов’язковий, але можна лишити — якщо треба меню
-        setSupportActionBar(tb);
-
+        // --- Toolbar ---
+        tb = findViewById(R.id.toolbar);
         tb.setNavigationOnClickListener(v -> getOnBackPressedDispatcher().onBackPressed());
-
-        // заголовок
-        String title = (roomName == null || roomName.isEmpty()) ? "Дані сенсорів" : roomName;
-        tb.setTitle(title + " (" + chipId + ")");
-
-        // edge-to-edge інсети зверху (якщо треба)
-        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(tb, (v, insets) -> {
-            int top = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.statusBars()).top;
-            v.setPadding(v.getPaddingLeft(), top, v.getPaddingRight(), v.getPaddingBottom());
-            return insets;
-        });
-        // --- /MaterialToolbar ---
+        tb.setTitle(makeTitle(roomName, chipId));
+        // --- /Toolbar ---
 
         progress = findViewById(R.id.progress);
 
@@ -91,11 +80,32 @@ public class SensorDataActivity extends AppCompatActivity {
         tvLightA   = findViewById(R.id.tvLightA);
         tvLightAP  = findViewById(R.id.tvLightAP);
 
-        loadLatest();
+        // перше завантаження — з індикатором
+        loadLatest(true);
     }
 
-    private void loadLatest() {
-        progress.setVisibility(View.VISIBLE);
+    @Override
+    protected void onStart() {
+        super.onStart();
+        // запускаємо автооновлення через 5 хв (щоб не дублювати одразу після onCreate)
+        handler.removeCallbacks(refreshRunnable);
+        handler.postDelayed(refreshRunnable, REFRESH_INTERVAL_MS);
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        // зупиняємо таймер, щойно екран зникає
+        handler.removeCallbacks(refreshRunnable);
+    }
+
+    private void loadLatest() { loadLatest(true); }
+
+    private void loadLatest(boolean showProgress) {
+        if (isLoading) return;
+        isLoading = true;
+
+        if (showProgress) progress.setVisibility(android.view.View.VISIBLE);
 
         SensorDataApiService api = ApiClientMain
                 .getClient(getApplicationContext())
@@ -103,22 +113,25 @@ public class SensorDataActivity extends AppCompatActivity {
 
         api.getLatest(chipId).enqueue(new Callback<SensorDataDTO>() {
             @Override public void onResponse(Call<SensorDataDTO> call, Response<SensorDataDTO> resp) {
-                progress.setVisibility(View.GONE);
+                isLoading = false;
+                progress.setVisibility(android.view.View.GONE);
+
                 if (!resp.isSuccessful() || resp.body() == null) {
-                    Toast.makeText(SensorDataActivity.this, "Немає даних", Toast.LENGTH_SHORT).show();
+                    // не шумимо тостом при автооновленні — лише при першому виклику
+                    if (showProgress) {
+                        Toast.makeText(SensorDataActivity.this, "Немає даних", Toast.LENGTH_SHORT).show();
+                    }
                     return;
                 }
                 SensorDataDTO d = resp.body();
 
-                // якщо бек повернув roomName — оновимо заголовок
-                if ((roomName == null || roomName.isEmpty()) && d.roomName != null) {
+                // оновлюємо заголовок, якщо з бекенда приїхав roomName
+                if ((roomName == null || roomName.isEmpty()) && d.roomName != null && !d.roomName.isEmpty()) {
                     roomName = d.roomName;
-                    if (getSupportActionBar() != null) {
-                        getSupportActionBar().setTitle(roomName + " (" + chipId + ")");
-                    }
                 }
+                tb.setTitle(makeTitle(roomName, chipId));
 
-                // підставляємо значення (акуратно з null)
+                // підставляємо значення
                 tvTemp.setText("🌡 Температура: " + f(d.temperatureDht, "°C"));
                 tvHumi.setText("💧 Вологість: " + f(d.humidityDht, "%"));
 
@@ -139,27 +152,30 @@ public class SensorDataActivity extends AppCompatActivity {
             }
 
             @Override public void onFailure(Call<SensorDataDTO> call, Throwable t) {
-                progress.setVisibility(View.GONE);
-                Toast.makeText(SensorDataActivity.this, "Помилка завантаження", Toast.LENGTH_SHORT).show();
+                isLoading = false;
+                progress.setVisibility(android.view.View.GONE);
+                if (showProgress) {
+                    Toast.makeText(SensorDataActivity.this, "Помилка завантаження", Toast.LENGTH_SHORT).show();
+                }
             }
         });
+    }
+
+    private String makeTitle(String roomName, String chipId) {
+        String rn = (roomName == null || roomName.isEmpty()) ? "Дані сенсорів" : roomName;
+        return rn + (chipId == null || chipId.isEmpty() ? "" : " (" + chipId + ")");
     }
 
     private String f(Float v, String unit) {
         return v == null ? "—" : String.format(Locale.getDefault(), "%.1f %s", v, unit);
     }
-    private String i(Integer v) {
-        return v == null ? "—" : String.valueOf(v);
-    }
-    private String b(Boolean v) {
-        if (v == null) return "—";
-        return v ? "Так" : "Ні"; // або "ON/OFF"
-    }
+    private String i(Integer v) { return v == null ? "—" : String.valueOf(v); }
+    private String b(Boolean v) { return v == null ? "—" : (v ? "Так" : "Ні"); }
 
+    // (не обов’язково, але якщо лишаєш підтримку home через меню)
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == android.R.id.home) { finish(); return true; }
         return super.onOptionsItemSelected(item);
     }
 }
-

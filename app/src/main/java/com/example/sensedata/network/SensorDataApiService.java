@@ -8,7 +8,7 @@ import retrofit2.http.Path;
 import retrofit2.http.Query;
 
 public interface SensorDataApiService {
-    @GET("api/sensordata/{chipId}/history")
+    @GET("sensordata/{chipId}/history")
     Call<List<SensorDataDTO>> getHistory(
             @Path("chipId") String chipId,
             @Query("take") Integer take,
@@ -16,6 +16,6 @@ public interface SensorDataApiService {
             @Query("to")   String toIso
     );
 
-    @GET("api/sensordata/{chipId}/latest")
+    @GET("sensordata/{chipId}/latest")
     Call<SensorDataDTO> getLatest(@Path("chipId") String chipId);
 }
