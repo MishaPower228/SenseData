@@ -1,5 +1,6 @@
 package com.example.sensedata;
 
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Paint;
@@ -23,6 +24,7 @@ import android.content.DialogInterface;
 import androidx.activity.EdgeToEdge;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.appcompat.content.res.AppCompatResources;
 import androidx.appcompat.widget.PopupMenu;
 import androidx.appcompat.widget.Toolbar;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -138,7 +140,13 @@ public class MainActivity extends ImmersiveActivity {
 
         // Адаптер
         roomAdapter = new RoomAdapter(
-                room -> { /* onClick за потреби */ },
+                room -> {
+                    // 📌 перехід у SensorDataActivity
+                    Intent intent = new Intent(this, SensorDataActivity.class);
+                    intent.putExtra(SensorDataActivity.EXTRA_CHIP_ID, room.getChipId());
+                    intent.putExtra(SensorDataActivity.EXTRA_ROOM_NAME, room.getRoomName());
+                    startActivity(intent);
+                },
                 (anchor, room) -> showRoomPopup(anchor, room)
         );
         roomRecyclerView.setAdapter(roomAdapter);
@@ -175,11 +183,16 @@ public class MainActivity extends ImmersiveActivity {
     }
 
     private void showRoomPopup(View anchor, RoomWithSensorDto room) {
-        PopupMenu menu = new PopupMenu(this, anchor);
+        Context wrapper = new android.view.ContextThemeWrapper(this, R.style.ThemeOverlay_App_PopupMenu);
+        PopupMenu menu = new PopupMenu(wrapper, anchor, Gravity.END);
         if (android.os.Build.VERSION.SDK_INT >= 23) menu.setGravity(Gravity.END);
+
         menu.getMenu().add(0, 1, 0, "Оновити кімнату");
         menu.getMenu().add(0, 2, 1, "Оновити Wi-Fi");
         menu.getMenu().add(0, 3, 2, "Видалити кімнату");
+
+        // страховка, якщо OEM ігнорує текстові стилі
+        tintPopupMenuText(menu, R.color.weather_card_text);
 
         menu.setOnMenuItemClickListener(item -> {
             switch (item.getItemId()) {
@@ -192,6 +205,15 @@ public class MainActivity extends ImmersiveActivity {
         menu.show();
     }
 
+    private void tintPopupMenuText(PopupMenu menu, @androidx.annotation.ColorRes int colorRes) {
+        int c = androidx.core.content.ContextCompat.getColor(this, colorRes);
+        for (int i = 0; i < menu.getMenu().size(); i++) {
+            android.view.MenuItem mi = menu.getMenu().getItem(i);
+            android.text.SpannableString s = new android.text.SpannableString(mi.getTitle());
+            s.setSpan(new android.text.style.ForegroundColorSpan(c), 0, s.length(), 0);
+            mi.setTitle(s);
+        }
+    }
 
     private void refreshRoomsData() {
         int userId = getSavedUserId();
@@ -390,15 +412,13 @@ public class MainActivity extends ImmersiveActivity {
         for (int i = 0; i < imageViews.length; i++) {
             final int idx = i;
             imageViews[i].setOnClickListener(v -> {
-                for (int j = 0; j < containers.length; j++) {
-                    containers[j].setBackgroundResource(R.drawable.bg_image_selector);
-                    imageViews[j].setScaleX(1f); imageViews[j].setScaleY(1f);
-                }
-                containers[idx].setBackgroundResource(R.drawable.bg_image_selected);
+                for (FrameLayout c : containers) c.setSelected(false);
+                containers[idx].setSelected(true); // селектор сам намалює рамку
+                for (ImageView iv : imageViews) { iv.setScaleX(1f); iv.setScaleY(1f); }
                 v.setScaleX(0.95f); v.setScaleY(0.95f);
                 selectedIndex[0] = idx;
                 Object tag = v.getTag();
-                selectedImage[0] = (tag == null) ? null : tag.toString();
+                selectedImage[0] = tag == null ? null : tag.toString();
             });
         }
         // попередньо підсвітити поточне зображення
@@ -412,17 +432,28 @@ public class MainActivity extends ImmersiveActivity {
             }
         }
 
-        new MaterialAlertDialogBuilder(this)
+        AlertDialog dlg = new MaterialAlertDialogBuilder(this)
                 .setTitle("Оновити кімнату")
                 .setView(view)
                 .setNegativeButton("Скасувати", null)
-                .setPositiveButton("Зберегти", (d, w) -> {
-                    String newName = etName.getText()==null ? "" : etName.getText().toString().trim();
-                    if (newName.isEmpty()) { Toast.makeText(this,"Введіть назву",Toast.LENGTH_SHORT).show(); return; }
-                    if (selectedImage[0] == null) { Toast.makeText(this,"Оберіть зображення",Toast.LENGTH_SHORT).show(); return; }
-                    doPutUpdateOwnership(room.getChipId(), newName, selectedImage[0]);
-                })
-                .show();
+                .setPositiveButton("Зберегти", null)   // щоб не закривати одразу
+                .create();
+
+        dlg.setOnShowListener(di -> {
+            applyDialogBg(dlg);
+            styleDialogTextAndButtons(dlg, R.color.weather_card_text);
+
+            android.widget.Button btn = dlg.getButton(DialogInterface.BUTTON_POSITIVE);
+            btn.setOnClickListener(v -> {
+                String newName = etName.getText()==null ? "" : etName.getText().toString().trim();
+                if (newName.isEmpty()) { etName.setError("Введіть назву"); return; }
+                if (selectedImage[0] == null) { Toast.makeText(this,"Оберіть зображення",Toast.LENGTH_SHORT).show(); return; }
+                doPutUpdateOwnership(room.getChipId(), newName, selectedImage[0]);
+                dlg.dismiss();
+            });
+        });
+        dlg.show();
+
     }
 
     private void doPutUpdateOwnership(String chipId, String newName, String newImage) {
@@ -483,25 +514,35 @@ public class MainActivity extends ImmersiveActivity {
     }
 
     private void showWifiDialog(RoomWithSensorDto room) {
-        View view = getLayoutInflater().inflate(R.layout.dialog_wifi, null);
-        EditText etSsid = view.findViewById(R.id.etSsid);
-        EditText etPass = view.findViewById(R.id.etPass);
-        TextView tvStatus = view.findViewById(R.id.tvWifiStatus);
-        com.google.android.material.progressindicator.CircularProgressIndicator prog =
+        if (room == null || room.getChipId() == null || room.getChipId().trim().isEmpty()) {
+            Toast.makeText(this, "У кімнати немає chipId. Онови список (pull-to-refresh).", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        final View view = getLayoutInflater().inflate(R.layout.dialog_wifi, null);
+        final EditText etSsid = view.findViewById(R.id.etSsid);
+        final EditText etPass = view.findViewById(R.id.etPass);
+        final TextView tvStatus = view.findViewById(R.id.tvWifiStatus);
+        final com.google.android.material.progressindicator.CircularProgressIndicator prog =
                 view.findViewById(R.id.progressWifi);
 
-        AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+        final AlertDialog dialog = new MaterialAlertDialogBuilder(this)
                 .setTitle("Оновити Wi-Fi")
                 .setView(view)
                 .setNegativeButton("Скасувати", null)
                 .setPositiveButton("Надіслати", null)
                 .create();
+
+        dialog.setOnShowListener(d -> {
+            applyDialogBg(dialog);
+            styleDialogTextAndButtons(dialog, R.color.weather_card_text);
+        });
         dialog.show();
 
         final android.widget.Button btnPos = dialog.getButton(DialogInterface.BUTTON_POSITIVE);
         final android.widget.Button btnNeg = dialog.getButton(DialogInterface.BUTTON_NEGATIVE);
 
-        Runnable setBusyTrue = () -> {
+        final Runnable setBusyTrue = () -> {
             btnPos.setEnabled(false);
             btnNeg.setEnabled(false);
             etSsid.setEnabled(false);
@@ -510,7 +551,7 @@ public class MainActivity extends ImmersiveActivity {
             tvStatus.setVisibility(View.VISIBLE);
             prog.setVisibility(View.VISIBLE);
         };
-        Runnable setBusyFalse = () -> {
+        final Runnable setBusyFalse = () -> {
             btnPos.setEnabled(true);
             btnNeg.setEnabled(true);
             etSsid.setEnabled(true);
@@ -519,24 +560,20 @@ public class MainActivity extends ImmersiveActivity {
             prog.setVisibility(View.GONE);
         };
 
-        // на випадок закриття діалогу під час скану — зупинити скан
-        dialog.setOnDismissListener(d -> {
-            try { bleManager.stopScan(); } catch (Exception ignore) {}
-        });
+        dialog.setOnDismissListener(d -> { try { bleManager.stopScan(); } catch (Exception ignore) {} });
 
         btnPos.setOnClickListener(v -> {
-            String ssid = etSsid.getText() == null ? "" : etSsid.getText().toString().trim();
-            String pass = etPass.getText() == null ? "" : etPass.getText().toString();
+            final String ssid = etSsid.getText() == null ? "" : etSsid.getText().toString().trim();
+            final String pass = etPass.getText() == null ? "" : etPass.getText().toString();
             if (ssid.isEmpty()) { etSsid.setError("Введіть SSID"); return; }
 
-            // BLE prechecks
             if (!bleManager.isBluetoothSupported()) { Toast.makeText(this,"BLE недоступний",Toast.LENGTH_SHORT).show(); return; }
             if (!bleManager.isBluetoothEnabled())   { startActivity(bleManager.getEnableBluetoothIntent()); return; }
             if (!bleManager.hasAllBlePermissions()) { bleManager.requestAllBlePermissions(this, 42); return; }
 
-            String chipId = room.getChipId()==null ? "" : room.getChipId().trim().toUpperCase(Locale.ROOT);
+            final String chipId = room.getChipId().trim().toUpperCase(java.util.Locale.ROOT);
             if (chipId.length() < 6) { Toast.makeText(this,"chipId некоректний",Toast.LENGTH_SHORT).show(); return; }
-            String targetName = "ESP32_" + chipId;
+            final String targetName = "ESP32_" + chipId;
 
             setBusyTrue.run();
             tvStatus.setText("Сканую ESP32 (" + targetName + ")…");
@@ -544,34 +581,25 @@ public class MainActivity extends ImmersiveActivity {
             bleManager.startBleScan(4000, (names, devices) -> runOnUiThread(() -> {
                 android.bluetooth.BluetoothDevice target = null;
                 for (int i = 0; i < names.size(); i++) {
-                    if (targetName.equalsIgnoreCase(names.get(i))) {
-                        target = devices.get(i);
-                        break;
-                    }
+                    if (targetName.equalsIgnoreCase(names.get(i))) { target = devices.get(i); break; }
                 }
-                if (target == null) {
-                    tvStatus.setText("ESP " + targetName + " не знайдено");
-                    setBusyFalse.run();
-                    return;
-                }
+                if (target == null) { tvStatus.setText("ESP " + targetName + " не знайдено"); setBusyFalse.run(); return; }
 
                 tvStatus.setText("Надсилаю Wi-Fi на " + targetName + "…");
+                try { bleManager.stopScan(); } catch (Exception ignore) {}
 
-                // ТУТ — викликаємо новий метод з колбеком
                 bleManager.sendWifiPatchViaDevice(target, ssid, pass, new BleManager.WifiPatchCallback() {
                     @Override public void onSuccess() {
                         runOnUiThread(() -> {
                             setBusyFalse.run();
-                            if (dialog.isShowing()) dialog.dismiss();  // ✅ перевірка
+                            if (dialog.isShowing()) dialog.dismiss(); // один dismiss
                             Toast.makeText(MainActivity.this, "Wi-Fi успішно оновлено", Toast.LENGTH_SHORT).show();
-                            dialog.dismiss();
                         });
                     }
-
                     @Override public void onError(String message) {
                         runOnUiThread(() -> {
                             tvStatus.setText(message == null ? "Помилка BLE" : message);
-                            setBusyFalse.run(); // лишаємо діалог відкритим, щоб користувач міг повторити
+                            setBusyFalse.run(); // лишаємо діалог відкритим
                         });
                     }
                 });
@@ -596,7 +624,7 @@ public class MainActivity extends ImmersiveActivity {
             Toast.makeText(this, "chipId некоректний", Toast.LENGTH_SHORT).show();
             return;
         }
-        String targetName = "ESP32_" + chipId.substring(chipId.length() - 6);
+        String targetName = "ESP32_" + chipId;
 
         bleManager.startBleScan(4000, (names, devices) -> {
             android.bluetooth.BluetoothDevice target = null;
@@ -613,13 +641,20 @@ public class MainActivity extends ImmersiveActivity {
             bleManager.sendWifiPatchViaDevice(target, ssid, pass);
         });
     }
+
     private void confirmAndDeleteRoom(RoomWithSensorDto room) {
-        new MaterialAlertDialogBuilder(this)
+        AlertDialog dialog = new MaterialAlertDialogBuilder(this)
                 .setTitle("Видалити кімнату?")
                 .setMessage("Це відв'яже пристрій від вашого акаунта.")
                 .setNegativeButton("Скасувати", null)
                 .setPositiveButton("Видалити", (d, w) -> doDeleteRoom(room))
-                .show();
+                .create();
+
+        dialog.setOnShowListener(d -> {
+            applyDialogBg(dialog);
+            styleDialogTextAndButtons(dialog, R.color.weather_card_text);
+        });
+        dialog.show();
     }
 
     private String getEtagForChip(String chipId) {
@@ -670,5 +705,42 @@ public class MainActivity extends ImmersiveActivity {
         });
     }
 
+    private void applyDialogBg(AlertDialog dialog) {
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(
+                    AppCompatResources.getDrawable(this, R.drawable.dialog_surface_bg));
+        }
+    }
 
+    private void styleDialogTextAndButtons(AlertDialog dialog, @androidx.annotation.ColorRes int colorRes) {
+        int color = androidx.core.content.ContextCompat.getColor(this, colorRes);
+
+        // Заголовок
+        TextView titleView = null;
+        int id = getResources().getIdentifier("alertTitle", "id", getPackageName());
+        if (id != 0) titleView = dialog.findViewById(id);
+        if (titleView == null) {
+            try { titleView = dialog.findViewById(com.google.android.material.R.id.alertTitle); } catch (Exception ignore) {}
+        }
+        if (titleView == null) {
+            id = getResources().getIdentifier("alertTitle", "id", "android");
+            if (id != 0) titleView = dialog.findViewById(id);
+        }
+        if (titleView != null) {
+            titleView.setTextColor(color);
+            titleView.setTypeface(titleView.getTypeface(), Typeface.BOLD);
+        }
+
+        // Повідомлення
+        TextView msg = dialog.findViewById(android.R.id.message);
+        if (msg != null) msg.setTextColor(color);
+
+        // Кнопки
+        android.widget.Button bPos = dialog.getButton(DialogInterface.BUTTON_POSITIVE);
+        android.widget.Button bNeg = dialog.getButton(DialogInterface.BUTTON_NEGATIVE);
+        android.widget.Button bNeu = dialog.getButton(DialogInterface.BUTTON_NEUTRAL);
+        if (bPos != null) { bPos.setTextColor(color); bPos.setAllCaps(false); }
+        if (bNeg != null) { bNeg.setTextColor(color); bNeg.setAllCaps(false); }
+        if (bNeu != null) { bNeu.setTextColor(color); bNeu.setAllCaps(false); }
+    }
 }

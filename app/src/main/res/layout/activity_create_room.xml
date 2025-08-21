@@ -114,6 +114,8 @@
                             android:layout_height="match_parent"
                             android:scaleType="centerCrop"
                             android:src="@drawable/livingroom"
+                            android:background="@drawable/bg_rounded_image"
+                            android:clipToOutline="true"
                             android:contentDescription="livingroom"
                             android:tag="livingroom" />
                     </FrameLayout>
@@ -133,6 +135,8 @@
                             android:layout_height="match_parent"
                             android:scaleType="centerCrop"
                             android:src="@drawable/kitchen"
+                            android:background="@drawable/bg_rounded_image"
+                            android:clipToOutline="true"
                             android:contentDescription="kitchen"
                             android:tag="kitchen" />
                     </FrameLayout>
@@ -152,6 +156,8 @@
                             android:layout_height="match_parent"
                             android:scaleType="centerCrop"
                             android:src="@drawable/living_room"
+                            android:background="@drawable/bg_rounded_image"
+                            android:clipToOutline="true"
                             android:contentDescription="living_room"
                             android:tag="living_room" />
                     </FrameLayout>
@@ -171,6 +177,8 @@
                             android:layout_height="match_parent"
                             android:scaleType="centerCrop"
                             android:src="@drawable/living_room_2"
+                            android:background="@drawable/bg_rounded_image"
+                            android:clipToOutline="true"
                             android:contentDescription="living_room_2"
                             android:tag="living_room_2" />
                     </FrameLayout>

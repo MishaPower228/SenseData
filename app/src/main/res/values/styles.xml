@@ -1,22 +1,144 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="RoundedImageView" parent="">
+
+    <!-- Стиль для закруглених ImageView -->
+    <style name="RoundedImageView">
         <item name="cornerFamily">rounded</item>
         <item name="cornerSize">25dp</item>
     </style>
+
+    <!-- Діалог зі своїм фоном -->
     <style name="RoundedDialog" parent="Theme.MaterialComponents.Light.Dialog">
-        <!-- 🔵 НЕ прозорий фон! Використовуємо відразу закруглений фон -->
         <item name="android:windowBackground">@color/bg_weather_card</item>
         <item name="android:backgroundDimEnabled">true</item>
         <item name="android:windowMinWidthMajor">90%</item>
         <item name="android:windowMinWidthMinor">90%</item>
     </style>
-    <style name="Shape.Rounded24" parent="">
+
+    <!-- Фігури для кастомних заокруглень -->
+    <style name="Shape.Rounded24">
         <item name="cornerFamily">rounded</item>
         <item name="cornerSize">24dp</item>
     </style>
-    <style name="Shape.Rounded16" parent="">
+
+    <style name="Shape.Rounded16">
         <item name="cornerFamily">rounded</item>
         <item name="cornerSize">16dp</item>
+    </style>
+
+    <!-- PopupMenu зі своїм фоном -->
+    <style name="CustomPopupMenu" parent="Widget.AppCompat.PopupMenu.Overflow">
+        <item name="android:popupBackground">@drawable/bg_chip_rounded</item>
+    </style>
+
+    <style name="ThemeOverlay.App.PopupMenu" parent="ThemeOverlay.Material3">
+        <item name="popupMenuStyle">@style/AppPopupMenu</item>
+        <item name="textAppearanceLargePopupMenu">@style/AppPopupMenuText</item>
+        <item name="textAppearanceSmallPopupMenu">@style/AppPopupMenuText</item>
+    </style>
+
+    <style name="AppPopupMenu" parent="Widget.AppCompat.PopupMenu.Overflow">
+        <item name="android:popupBackground">@drawable/bg_chip_rounded</item>
+    </style>
+
+    <style name="AppPopupMenuText" parent="TextAppearance.AppCompat.Body1">
+        <item name="android:textColor">@color/weather_card_text</item>
+        <item name="android:textSize">16sp</item>
+    </style>
+
+    <!-- Overlay для MaterialAlertDialog -->
+    <style name="AppDialogOverlay" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+        <item name="colorSurface">@color/bg_weather_card</item>
+        <item name="shapeAppearance">@style/ShapeAppearance.App.RoundLarge</item>
+        <item name="shapeAppearanceLargeComponent">@style/ShapeAppearance.App.RoundLarge</item>
+        <item name="colorPrimary">@color/main_color</item>
+    </style>
+
+    <style name="Shape" parent="ShapeAppearance.Material3.MediumComponent">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">16dp</item>
+    </style>
+
+    <style name="TextAppearance.App.DialogTitle" parent="TextAppearance.Material3.TitleLarge">
+        <item name="android:textColor">@color/weather_card_text</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="TextAppearance.App.DialogBody" parent="TextAppearance.Material3.BodyMedium">
+        <item name="android:textColor">@color/weather_card_text</item>
+    </style>
+
+    <style name="PopupMenuTextStyle" parent="@style/Widget.Material3.PopupMenu">
+        <item name="android:textColor">@color/weather_card_text</item>
+        <item name="android:textSize">16sp</item>
+    </style>
+
+
+    <!-- Один раз: велике заокруглення для діалогів -->
+    <style name="ShapeAppearance.App.RoundLarge" parent="ShapeAppearance.Material3.LargeComponent">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">24dp</item>
+    </style>
+
+    <!-- Текст для заголовка діалогу -->
+    <style name="DialogTitleText" parent="TextAppearance.Material3.TitleMedium">
+        <item name="android:textColor">@color/weather_card_text</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <!-- Текст для тіла діалогу -->
+    <style name="DialogBodyText" parent="TextAppearance.Material3.BodyMedium">
+        <item name="android:textColor">@color/weather_card_text</item>
+    </style>
+
+    <!-- Стиль кнопок у діалозі -->
+    <style name="DialogTextButton" parent="Widget.Material3.Button.TextButton.Dialog">
+        <item name="android:textColor">@style/DialogButtonOverlay</item>
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <!-- необов'язково: -->
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="DialogButtonOverlay" parent="">
+        <item name="colorPrimary">@color/main_color</item>
+    </style>
+
+    <!-- ГОЛОВНИЙ оверлей для всіх MaterialAlertDialog -->
+    <style name="CustomAlertDialogTheme" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+        <!-- фон/радіуси через токени Material3 -->
+        <item name="colorSurface">@color/bg_weather_card</item>
+        <item name="shapeAppearance">@style/ShapeAppearance.App.RoundLarge</item>
+        <item name="shapeAppearanceLargeComponent">@style/ShapeAppearance.App.RoundLarge</item>
+
+        <!-- фарбуємо текст -->
+        <item name="materialAlertDialogTitleTextStyle">@style/DialogTitleText</item>
+        <item name="materialAlertDialogBodyTextStyle">@style/DialogBodyText</item>
+
+        <!-- фарбуємо кнопки -->
+        <item name="buttonBarPositiveButtonStyle">@style/DialogTextButton</item>
+        <item name="buttonBarNegativeButtonStyle">@style/DialogTextButton</item>
+        <item name="buttonBarNeutralButtonStyle">@style/DialogTextButton</item>
+    </style>
+
+    <style name="TextLabel">
+        <item name="android:textSize">13sp</item>
+        <item name="android:textColor">@color/weather_card_text</item>
+        <item name="android:layout_marginBottom">6dp</item>
+    </style>
+    <style name="TextValue">
+        <item name="android:textSize">13sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:layout_marginBottom">6dp</item>
+    </style>
+
+    <style name="SensorPill">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:background">@drawable/bg_sensor_pill</item>
+        <item name="android:padding">10dp</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:textColor">@color/weather_card_text</item>
+        <item name="android:layout_marginBottom">8dp</item>
     </style>
 </resources>
