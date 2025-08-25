@@ -121,6 +121,13 @@
         <item name="buttonBarNeutralButtonStyle">@style/DialogTextButton</item>
     </style>
 
+    <style name="CustomAlertDialogTheme2" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:backgroundDimEnabled">false</item> <!-- 🔹 вимикає затемнення -->
+        <item name="colorSurface">@color/bg_weather_card</item>
+        <item name="shapeAppearance">@style/ShapeAppearance.App.RoundLarge</item>
+    </style>
+
     <style name="TextLabel">
         <item name="android:textSize">13sp</item>
         <item name="android:textColor">@color/weather_card_text</item>
@@ -141,4 +148,35 @@
         <item name="android:textColor">@color/weather_card_text</item>
         <item name="android:layout_marginBottom">8dp</item>
     </style>
+    <style name="AdviceCard">
+        <item name="android:background">@drawable/bg_dialog_rounded</item>
+        <item name="android:padding">12dp</item>
+        <item name="android:layout_marginBottom">8dp</item>
+    </style>
+    <style name="AdviceCardBg">
+        <item name="android:background">@drawable/bg_chip_rounded</item>
+        <item name="android:padding">12dp</item>
+        <item name="android:layout_marginBottom">8dp</item>
+    </style>
+
+    <!-- Дата -->
+    <style name="AdviceDate" parent="TextAppearance.Material3.BodySmall">
+        <item name="android:textColor">@color/weather_card_text</item>
+        <item name="android:textSize">12sp</item>
+    </style>
+
+    <!-- Основний текст -->
+    <style name="AdviceText" parent="TextAppearance.Material3.BodyMedium">
+        <item name="android:textColor">@color/weather_card_text</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:lineSpacingExtra">2dp</item>
+    </style>
+
+    <style name="AdviceChipText" parent="TextAppearance.Material3.LabelMedium">
+        <item name="android:textColor">@color/weather_card_text</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+
 </resources>

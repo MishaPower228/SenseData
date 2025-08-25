@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    style="@style/AdviceCardBg"
+    android:padding="12dp">
+
+    <!-- Дата -->
+    <TextView
+        android:id="@+id/tvDate"
+        style="@style/AdviceDate"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="25.08.2025 11:21"
+        android:textSize="12sp"
+        android:textColor="@color/weather_card_text"/>
+
+    <!-- Текст -->
+    <TextView
+        android:id="@+id/tvText"
+        style="@style/AdviceText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Виявлено газ/забруднення. Провітріть негайно."
+        android:textSize="14sp"
+        android:textColor="@color/weather_card_text"
+        android:drawablePadding="6dp"/>
+</LinearLayout>

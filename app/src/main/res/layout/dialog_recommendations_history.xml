@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    app:cardElevation="0dp"
+    app:cardUseCompatPadding="false"
+    app:cardCornerRadius="24dp"
+    android:background="@android:color/transparent">
+
+    <LinearLayout
+        android:orientation="vertical"
+        android:padding="12dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_dialog_rounded">
+
+        <!-- Заголовок -->
+        <TextView
+            android:id="@+id/tvHistoryTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Історія порад"
+            android:textColor="@color/weather_card_text"
+            android:textStyle="bold"
+            android:textSize="18sp"
+            android:paddingBottom="8dp"/>
+
+        <!-- Список -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvAdviceHistory"
+            android:layout_width="match_parent"
+            android:layout_height="360dp"
+            android:overScrollMode="ifContentScrolls"/>
+
+        <!-- Текст коли немає даних -->
+        <TextView
+            android:id="@+id/tvEmpty"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Поки що немає записів"
+            android:gravity="center"
+            android:paddingTop="12dp"
+            android:visibility="gone"/>
+
+        <!-- Кнопка Закрити -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnClose"
+            style="@style/Widget.MaterialComponents.Button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Закрити"
+            android:textAllCaps="false"
+            app:cornerRadius="20dp"
+            app:backgroundTint="@color/main_color"
+            android:textColor="@color/white"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="16dp"/>
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>

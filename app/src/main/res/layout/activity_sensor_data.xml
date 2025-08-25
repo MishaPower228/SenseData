@@ -95,6 +95,24 @@
                 android:id="@+id/tvLightAP"
                 style="@style/SensorPill"
                 android:text="🔆 Освітленість, %: …"/>
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="8dp"
+                android:layout_marginTop="8dp"
+                android:background="@android:color/transparent" />
+
+            <TextView
+                android:id="@+id/tvAdviceTitle"
+                style="@style/SensorPill"
+                android:text="🧠 Рекомендації"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvAdvice"
+                style="@style/SensorPill"
+                android:text="—"
+                android:maxLines="6"
+                android:ellipsize="end" />
         </LinearLayout>
     </ScrollView>
 </androidx.constraintlayout.widget.ConstraintLayout>
