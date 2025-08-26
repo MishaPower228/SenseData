@@ -79,12 +79,18 @@ public class MainActivity extends ImmersiveActivity {
     // 📊 Графік + кнопки
     private LineChart chart;
     private MaterialButton btnDay, btnWeek;
+    private MaterialButton btnTemperature, btnHumidity;
+
+    // Стан графіка
+    private boolean isDaySelected = true;      // день чи тиждень
+    private boolean showTemperature = true;    // 👈 що показувати: true = температура, false = вологість
 
     // Чіпи кімнат + стан
     private ChipGroup chipGroupRooms;
     private final List<RoomWithSensorDto> roomsCache = new ArrayList<>();
     private String selectedChipId = null;   // кімната для графіка
-    private boolean isDaySelected = true;   // активний діапазон
+
+
 
     // 🔵 BLE для оновлення Wi-Fi
     private BleManager bleManager;
@@ -145,6 +151,8 @@ public class MainActivity extends ImmersiveActivity {
         chart  = findViewById(R.id.chart);
         btnDay = findViewById(R.id.btnDay);
         btnWeek = findViewById(R.id.btnWeek);
+        btnTemperature = findViewById(R.id.btnTemperature); // 👈 нова кнопка
+        btnHumidity = findViewById(R.id.btnHumidity);
         setupChart(chart);
 
         // ChipGroup кімнат
@@ -162,6 +170,19 @@ public class MainActivity extends ImmersiveActivity {
             updateChartForSelection();
         });
         highlightButton(btnDay, btnWeek); // дефолт
+
+        // Кнопки ТЕМПЕРАТУРА / ВОЛОГІСТЬ
+        btnTemperature.setOnClickListener(v -> {
+            highlightButton(btnTemperature, btnHumidity);
+            showTemperature = true;
+            updateChartForSelection();
+        });
+        btnHumidity.setOnClickListener(v -> {
+            highlightButton(btnHumidity, btnTemperature);
+            showTemperature = false;
+            updateChartForSelection();
+        });
+        highlightButton(btnTemperature, btnHumidity); // дефолт
 
         // Завантаження кімнат
         loadRoomsFromServer();
@@ -555,7 +576,7 @@ public class MainActivity extends ImmersiveActivity {
     }
 
     private void setChartDataFromApi(List<SensorPointDto> points, boolean isDay) {
-        int txtColor = androidx.core.content.ContextCompat.getColor(this, R.color.weather_card_text);
+        int txtColor = ContextCompat.getColor(this, R.color.weather_card_text);
 
         List<Entry> temp = new ArrayList<>();
         List<Entry> hum  = new ArrayList<>();
@@ -574,24 +595,26 @@ public class MainActivity extends ImmersiveActivity {
             labels.add(isDay ? local.toLocalTime().format(hhmm) : local.toLocalDate().format(ddMM));
         }
 
-        LineDataSet tempSet = new LineDataSet(temp, "Температура °C");
-        tempSet.setColor(Color.RED);
-        tempSet.setCircleColor(Color.RED);
-        tempSet.setDrawValues(true);
-        tempSet.setValueTextColor(txtColor);
-        tempSet.setValueTextSize(10f);
-        tempSet.setValueFormatter(new com.github.mikephil.charting.formatter.ValueFormatter() {
-            @Override
-            public String getFormattedValue(float value) {
-                return String.format(Locale.getDefault(), "%.0f°", value);
-            }
-        });
+        LineDataSet dataSet;
+        if (showTemperature) { // 👈 перемикач
+            dataSet = new LineDataSet(temp, "Температура °C");
+            dataSet.setColor(Color.RED);
+            dataSet.setCircleColor(Color.RED);
+            dataSet.setValueFormatter(new com.github.mikephil.charting.formatter.ValueFormatter() {
+                @Override
+                public String getFormattedValue(float value) {
+                    return String.format(Locale.getDefault(), "%.0f°", value);
+                }
+            });
+        } else {
+            dataSet = new LineDataSet(hum, "Вологість %");
+            dataSet.setColor(Color.BLUE);
+            dataSet.setCircleColor(Color.BLUE);
+        }
 
-        LineDataSet humSet = new LineDataSet(hum, "Вологість %");
-        humSet.setColor(Color.BLUE);
-        humSet.setCircleColor(Color.BLUE);
-        humSet.setDrawValues(false);
-        humSet.setValueTextColor(txtColor);
+        dataSet.setDrawValues(true);
+        dataSet.setValueTextColor(txtColor);
+        dataSet.setValueTextSize(10f);
 
         chart.getXAxis().setGranularity(1f);
         chart.getXAxis().setLabelCount(Math.min(6, labels.size()), true);
@@ -603,7 +626,7 @@ public class MainActivity extends ImmersiveActivity {
         });
 
         chart.setExtraTopOffset(12f);
-        chart.setData(new LineData(tempSet, humSet));
+        chart.setData(new LineData(dataSet)); // 👈 тільки один ряд
         chart.invalidate();
     }
 
