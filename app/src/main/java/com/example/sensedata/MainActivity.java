@@ -1,5 +1,7 @@
 package com.example.sensedata;
 
+import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
@@ -8,31 +10,53 @@ import android.graphics.Typeface;
 import android.os.Bundle;
 import android.os.Handler;
 import android.text.SpannableString;
+import android.text.TextUtils;
 import android.text.style.StyleSpan;
+import android.util.TypedValue;
+import android.view.Gravity;
 import android.view.View;
+import android.widget.EditText;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.content.res.AppCompatResources;
+import androidx.appcompat.widget.PopupMenu;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.sensedata.adapter.RoomAdapter;
 import com.example.sensedata.model.RoomWithSensorDto;
+import com.example.sensedata.model.SensorOwnershipUpdateDto;
+import com.example.sensedata.model.SensorPointDto;
 import com.example.sensedata.network.ApiClientMain;
 import com.example.sensedata.network.RoomApiService;
+import com.example.sensedata.network.SensorDataApiService;
 import com.example.sensedata.network.UserApiService;
 import com.github.mikephil.charting.charts.LineChart;
+import com.github.mikephil.charting.components.AxisBase;
 import com.github.mikephil.charting.components.XAxis;
 import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.chip.Chip;
+import com.google.android.material.chip.ChipGroup;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.progressindicator.CircularProgressIndicator;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -56,10 +80,18 @@ public class MainActivity extends ImmersiveActivity {
     private LineChart chart;
     private MaterialButton btnDay, btnWeek;
 
+    // Чіпи кімнат + стан
+    private ChipGroup chipGroupRooms;
+    private final List<RoomWithSensorDto> roomsCache = new ArrayList<>();
+    private String selectedChipId = null;   // кімната для графіка
+    private boolean isDaySelected = true;   // активний діапазон
+
+    // 🔵 BLE для оновлення Wi-Fi
+    private BleManager bleManager;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
 
@@ -74,28 +106,33 @@ public class MainActivity extends ImmersiveActivity {
         setHello(title, (cached != null) ? cached : getString(R.string.guest));
         refreshUsernameFromServer(title);
 
-        // Підписи
+        // Підписи секцій
         TextView labelWeather = findViewById(R.id.labelWeather);
         TextView labelRooms   = findViewById(R.id.labelRooms);
+        TextView labelCharts  = findViewById(R.id.labelCharts);
         labelWeather.setPaintFlags(labelWeather.getPaintFlags() | Paint.UNDERLINE_TEXT_FLAG);
         labelRooms.setPaintFlags(labelRooms.getPaintFlags() | Paint.UNDERLINE_TEXT_FLAG);
+        labelCharts.setPaintFlags(labelCharts.getPaintFlags() | Paint.UNDERLINE_TEXT_FLAG);
 
         // Погода
         weatherManager = new WeatherManager(this);
         weatherManager.startWeatherUpdates();
 
-        // RecyclerView кімнат
+        // BLE
+        bleManager = new BleManager(this);
+
+        // Список кімнат
         setupRoomsRecycler();
 
-        // FAB
+        // FAB -> CreateRoomActivity
         createRoomLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> {
                     if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                        // Якщо потрібно — обробиш chipId/roomName/imageName
                         String chipId = result.getData().getStringExtra("chipId");
                         String roomName = result.getData().getStringExtra("roomName");
                         String imageName = result.getData().getStringExtra("imageName");
-                        // можна обробити chipId
                     }
                 }
         );
@@ -104,26 +141,27 @@ public class MainActivity extends ImmersiveActivity {
                 createRoomLauncher.launch(new Intent(this, CreateRoomActivity.class))
         );
 
-        // 📊 Налаштування графіка
-        chart = findViewById(R.id.chart);
+        // 📊 Графік
+        chart  = findViewById(R.id.chart);
         btnDay = findViewById(R.id.btnDay);
         btnWeek = findViewById(R.id.btnWeek);
-
         setupChart(chart);
 
+        // ChipGroup кімнат
+        chipGroupRooms = findViewById(R.id.chipGroupRooms);
+
+        // Кнопки ДЕНЬ/ТИЖДЕНЬ
         btnDay.setOnClickListener(v -> {
             highlightButton(btnDay, btnWeek);
-            loadDayData();
+            isDaySelected = true;
+            updateChartForSelection();
         });
-
         btnWeek.setOnClickListener(v -> {
             highlightButton(btnWeek, btnDay);
-            loadWeekData();
+            isDaySelected = false;
+            updateChartForSelection();
         });
-
-        // дефолт = день
-        highlightButton(btnDay, btnWeek);
-        loadDayData();
+        highlightButton(btnDay, btnWeek); // дефолт
 
         // Завантаження кімнат
         loadRoomsFromServer();
@@ -142,68 +180,477 @@ public class MainActivity extends ImmersiveActivity {
                     intent.putExtra(SensorDataActivity.EXTRA_ROOM_NAME, room.getRoomName());
                     startActivity(intent);
                 },
-                (anchor, room) -> { /* popup */ }
+                // 👉 ЛОНГТАП: показуємо поп-меню
+                (anchor, room) -> showRoomPopup(anchor, room)
         );
         roomRecyclerView.setAdapter(roomAdapter);
     }
 
-    // --------- 📊 Графіки ---------
+    // ---------- ПОП-МЕНЮ ТА ПОВ’ЯЗАНЕ ----------
+
+    private void showRoomPopup(View anchor, RoomWithSensorDto room) {
+        Context wrapper = new android.view.ContextThemeWrapper(this, R.style.ThemeOverlay_App_PopupMenu);
+        PopupMenu menu = new PopupMenu(wrapper, anchor, Gravity.END);
+        if (android.os.Build.VERSION.SDK_INT >= 23) menu.setGravity(Gravity.END);
+
+        menu.getMenu().add(0, 1, 0, "Оновити кімнату");
+        menu.getMenu().add(0, 2, 1, "Оновити Wi-Fi");
+        menu.getMenu().add(0, 3, 2, "Видалити кімнату");
+
+        tintPopupMenuText(menu, R.color.weather_card_text);
+
+        menu.setOnMenuItemClickListener(item -> {
+            switch (item.getItemId()) {
+                case 1: showEditRoomDialog(room); return true;
+                case 2: showWifiDialog(room);     return true;
+                case 3: confirmAndDeleteRoom(room); return true;
+            }
+            return false;
+        });
+        menu.show();
+    }
+
+    private void tintPopupMenuText(PopupMenu menu, @androidx.annotation.ColorRes int colorRes) {
+        int c = ContextCompat.getColor(this, colorRes);
+        for (int i = 0; i < menu.getMenu().size(); i++) {
+            android.view.MenuItem mi = menu.getMenu().getItem(i);
+            SpannableString s = new SpannableString(mi.getTitle());
+            s.setSpan(new android.text.style.ForegroundColorSpan(c), 0, s.length(), 0);
+            mi.setTitle(s);
+        }
+    }
+
+    private void showEditRoomDialog(RoomWithSensorDto room) {
+        final String chipId = room.getChipId();
+        if (chipId == null || chipId.trim().isEmpty()) {
+            Toast.makeText(this, "У кімнати немає chipId. Онови список.", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        View view = getLayoutInflater().inflate(R.layout.dialog_edit_room, null);
+        EditText etName = view.findViewById(R.id.etRoomName);
+
+        FrameLayout[] containers = new FrameLayout[] {
+                view.findViewById(R.id.container1),
+                view.findViewById(R.id.container2),
+                view.findViewById(R.id.container3),
+                view.findViewById(R.id.container4)
+        };
+        ImageView[] imageViews = new ImageView[] {
+                view.findViewById(R.id.img1),
+                view.findViewById(R.id.img2),
+                view.findViewById(R.id.img3),
+                view.findViewById(R.id.img4)
+        };
+
+        etName.setText(room.getRoomName());
+        final int[] selectedIndex = {-1};
+        final String[] selectedImage = { room.getImageName() };
+
+        for (int i = 0; i < imageViews.length; i++) {
+            final int idx = i;
+            imageViews[i].setOnClickListener(v -> {
+                for (FrameLayout c : containers) c.setSelected(false);
+                containers[idx].setSelected(true);
+                for (ImageView iv : imageViews) { iv.setScaleX(1f); iv.setScaleY(1f); }
+                v.setScaleX(0.95f); v.setScaleY(0.95f);
+                selectedIndex[0] = idx;
+                Object tag = v.getTag();
+                selectedImage[0] = tag == null ? null : tag.toString();
+            });
+        }
+
+        // Підсвічуємо поточну картинку
+        if (room.getImageName() != null) {
+            for (int i = 0; i < imageViews.length; i++) {
+                Object tag = imageViews[i].getTag();
+                if (tag != null && tag.toString().equals(room.getImageName())) {
+                    imageViews[i].performClick();
+                    break;
+                }
+            }
+        }
+
+        AlertDialog dlg = new MaterialAlertDialogBuilder(this)
+                .setTitle("Оновити кімнату")
+                .setView(view)
+                .setNegativeButton("Скасувати", null)
+                .setPositiveButton("Зберегти", null)
+                .create();
+
+        dlg.setOnShowListener(di -> {
+            applyDialogBg(dlg);
+            styleDialogTextAndButtons(dlg, R.color.weather_card_text);
+            android.widget.Button btn = dlg.getButton(DialogInterface.BUTTON_POSITIVE);
+            btn.setOnClickListener(v -> {
+                String newName = etName.getText() == null ? "" : etName.getText().toString().trim();
+                if (newName.isEmpty()) { etName.setError("Введіть назву"); return; }
+                if (selectedImage[0] == null) {
+                    Toast.makeText(this, "Оберіть зображення", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                doPutUpdateOwnership(chipId, newName, selectedImage[0]);
+                dlg.dismiss();
+            });
+        });
+        dlg.show();
+    }
+
+    private void doPutUpdateOwnership(String chipId, String newName, String newImage) {
+        RoomApiService api = ApiClientMain.getClient(this).create(RoomApiService.class);
+        SensorOwnershipUpdateDto body = new SensorOwnershipUpdateDto(chipId, newName, newImage);
+        String ifMatch = getEtagForChip(chipId); // може бути null
+
+        api.updateOwnership(ifMatch, body).enqueue(new Callback<Void>() {
+            @Override public void onResponse(Call<Void> call, Response<Void> resp) {
+                if (resp.isSuccessful()) {
+                    String etag = resp.headers().get("ETag");
+                    if (etag != null) saveEtagForChip(chipId, etag);
+
+                    // Локально оновлюємо картку
+                    List<RoomWithSensorDto> updated = new ArrayList<>(roomAdapter.getCurrentList());
+                    for (int i = 0; i < updated.size(); i++) {
+                        RoomWithSensorDto r = updated.get(i);
+                        if (r.getChipId()!=null && r.getChipId().equalsIgnoreCase(chipId)) {
+                            updated.set(i, new RoomWithSensorDto(
+                                    r.getId(), r.getChipId(), newName, newImage, r.getTemperature(), r.getHumidity()
+                            ));
+                            break;
+                        }
+                    }
+                    roomAdapter.submitList(updated);
+                    Toast.makeText(MainActivity.this, "Оновлено", Toast.LENGTH_SHORT).show();
+
+                    // Дотягуємо з сервера
+                    loadRoomsFromServer();
+                    return;
+                }
+
+                int code = resp.code();
+                String serverMsg = null;
+                try { if (resp.errorBody()!=null) serverMsg = resp.errorBody().string(); } catch (Exception ignore) {}
+                if (code == 412) {
+                    Toast.makeText(MainActivity.this, "Дані змінені в іншому місці (412). Оновлюю список…", Toast.LENGTH_LONG).show();
+                    loadRoomsFromServer();
+                } else if (code == 404) {
+                    Toast.makeText(MainActivity.this, "Пристрій не знайдено (404). Оновлюю список…", Toast.LENGTH_LONG).show();
+                    loadRoomsFromServer();
+                } else if (code == 409) {
+                    Toast.makeText(MainActivity.this, "Конфлікт (409): " + (serverMsg!=null?serverMsg:""), Toast.LENGTH_LONG).show();
+                    loadRoomsFromServer();
+                } else {
+                    Toast.makeText(MainActivity.this, "Помилка PUT: " + code + (serverMsg!=null?(" • "+serverMsg):""), Toast.LENGTH_LONG).show();
+                }
+            }
+            @Override public void onFailure(Call<Void> call, Throwable t) {
+                Toast.makeText(MainActivity.this, "PUT збій: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void showWifiDialog(RoomWithSensorDto room) {
+        if (room == null || room.getChipId() == null || room.getChipId().trim().isEmpty()) {
+            Toast.makeText(this, "У кімнати немає chipId. Онови список.", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        final View view = getLayoutInflater().inflate(R.layout.dialog_wifi, null);
+        final EditText etSsid = view.findViewById(R.id.etSsid);
+        final EditText etPass = view.findViewById(R.id.etPass);
+        final TextView tvStatus = view.findViewById(R.id.tvWifiStatus);
+        final CircularProgressIndicator prog = view.findViewById(R.id.progressWifi);
+
+        final AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+                .setTitle("Оновити Wi-Fi")
+                .setView(view)
+                .setNegativeButton("Скасувати", null)
+                .setPositiveButton("Надіслати", null)
+                .create();
+
+        dialog.setOnShowListener(d -> {
+            applyDialogBg(dialog);
+            styleDialogTextAndButtons(dialog, R.color.weather_card_text);
+        });
+        dialog.show();
+
+        final android.widget.Button btnPos = dialog.getButton(DialogInterface.BUTTON_POSITIVE);
+        final android.widget.Button btnNeg = dialog.getButton(DialogInterface.BUTTON_NEGATIVE);
+
+        final Runnable setBusyTrue = () -> {
+            btnPos.setEnabled(false); btnNeg.setEnabled(false);
+            etSsid.setEnabled(false); etPass.setEnabled(false);
+            tvStatus.setText("Сканую ESP32…");
+            tvStatus.setVisibility(View.VISIBLE);
+            prog.setVisibility(View.VISIBLE);
+        };
+        final Runnable setBusyFalse = () -> {
+            btnPos.setEnabled(true); btnNeg.setEnabled(true);
+            etSsid.setEnabled(true); etPass.setEnabled(true);
+            tvStatus.setVisibility(View.GONE);
+            prog.setVisibility(View.GONE);
+        };
+
+        dialog.setOnDismissListener(d -> {
+            try { bleManager.stopScan(); } catch (Exception ignore) {}
+        });
+
+        btnPos.setOnClickListener(v -> {
+            final String ssid = etSsid.getText()==null ? "" : etSsid.getText().toString().trim();
+            final String pass = etPass.getText()==null ? "" : etPass.getText().toString();
+            if (ssid.isEmpty()) { etSsid.setError("Введіть SSID"); return; }
+
+            if (!bleManager.isBluetoothSupported()) { Toast.makeText(this,"BLE недоступний",Toast.LENGTH_SHORT).show(); return; }
+            if (!bleManager.isBluetoothEnabled()) { startActivity(bleManager.getEnableBluetoothIntent()); return; }
+            if (!bleManager.hasAllBlePermissions()) { bleManager.requestAllBlePermissions(this, 42); return; }
+
+            final String chipId = room.getChipId().trim().toUpperCase(Locale.ROOT);
+            if (chipId.length() < 6) { Toast.makeText(this,"chipId некоректний",Toast.LENGTH_SHORT).show(); return; }
+            final String targetName = "ESP32_" + chipId;
+
+            setBusyTrue.run();
+            tvStatus.setText("Сканую ESP32 (" + targetName + ")…");
+
+            bleManager.startBleScan(4000, (names, devices) -> runOnUiThread(() -> {
+                android.bluetooth.BluetoothDevice target = null;
+                for (int i = 0; i < names.size(); i++) {
+                    if (targetName.equalsIgnoreCase(names.get(i))) {
+                        target = devices.get(i);
+                        break;
+                    }
+                }
+                if (target == null) {
+                    tvStatus.setText("ESP " + targetName + " не знайдено");
+                    setBusyFalse.run();
+                    return;
+                }
+                tvStatus.setText("Надсилаю Wi-Fi на " + targetName + "…");
+                try { bleManager.stopScan(); } catch (Exception ignore) {}
+
+                bleManager.sendWifiPatchViaDevice(target, ssid, pass, new BleManager.WifiPatchCallback() {
+                    @Override public void onSuccess() {
+                        runOnUiThread(() -> {
+                            setBusyFalse.run();
+                            if (dialog.isShowing()) dialog.dismiss();
+                            Toast.makeText(MainActivity.this, "Wi-Fi успішно оновлено", Toast.LENGTH_SHORT).show();
+                        });
+                    }
+                    @Override public void onError(String message) {
+                        runOnUiThread(() -> {
+                            tvStatus.setText(message == null ? "Помилка BLE" : message);
+                            setBusyFalse.run();
+                        });
+                    }
+                });
+            }));
+        });
+    }
+
+    private void confirmAndDeleteRoom(RoomWithSensorDto room) {
+        AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+                .setTitle("Видалити кімнату?")
+                .setMessage("Це відв'яже пристрій від вашого акаунта.")
+                .setNegativeButton("Скасувати", null)
+                .setPositiveButton("Видалити", (d, w) -> doDeleteRoom(room))
+                .create();
+        dialog.setOnShowListener(d -> {
+            applyDialogBg(dialog);
+            styleDialogTextAndButtons(dialog, R.color.weather_card_text);
+        });
+        dialog.show();
+    }
+
+    private void doDeleteRoom(RoomWithSensorDto room) {
+        int userId = getSavedUserId();
+        if (userId == -1 || room.getChipId() == null) {
+            Toast.makeText(this, "Немає userId або chipId", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        RoomApiService api = ApiClientMain.getClient(this).create(RoomApiService.class);
+        api.deleteOwnership(room.getChipId(), userId).enqueue(new Callback<Void>() {
+            @Override public void onResponse(Call<Void> call, Response<Void> resp) {
+                if (resp.isSuccessful()) {
+                    List<RoomWithSensorDto> updated = new ArrayList<>(roomAdapter.getCurrentList());
+                    updated.removeIf(r -> r.getChipId()!=null && r.getChipId().equalsIgnoreCase(room.getChipId()));
+                    roomAdapter.submitList(updated);
+                    removeEtagForChip(room.getChipId());
+                    Toast.makeText(MainActivity.this, "Кімнату видалено", Toast.LENGTH_SHORT).show();
+                    loadRoomsFromServer();
+                } else {
+                    Toast.makeText(MainActivity.this, "Помилка DELETE: " + resp.code(), Toast.LENGTH_SHORT).show();
+                }
+            }
+            @Override public void onFailure(Call<Void> call, Throwable t) {
+                Toast.makeText(MainActivity.this, "DELETE збій: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    // ---------- ETag helpers ----------
+    private String getEtagForChip(String chipId) {
+        return getSharedPreferences("etag_store", MODE_PRIVATE)
+                .getString("etag_" + chipId, null);
+    }
+    private void saveEtagForChip(String chipId, String etag) {
+        if (etag == null) return;
+        getSharedPreferences("etag_store", MODE_PRIVATE)
+                .edit().putString("etag_" + chipId, etag).apply();
+    }
+    private void removeEtagForChip(String chipId) {
+        getSharedPreferences("etag_store", MODE_PRIVATE)
+                .edit().remove("etag_" + chipId).apply();
+    }
+
+    // ---------- Діалогова стилізація ----------
+    private void applyDialogBg(AlertDialog dialog) {
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(
+                    AppCompatResources.getDrawable(this, R.drawable.dialog_surface_bg));
+        }
+    }
+    private void styleDialogTextAndButtons(AlertDialog dialog, @androidx.annotation.ColorRes int colorRes) {
+        int color = ContextCompat.getColor(this, colorRes);
+
+        TextView titleView = null;
+        int id = getResources().getIdentifier("alertTitle", "id", getPackageName());
+        if (id != 0) titleView = dialog.findViewById(id);
+        if (titleView == null) {
+            try { titleView = dialog.findViewById(com.google.android.material.R.id.alertTitle); } catch (Exception ignore) {}
+        }
+        if (titleView == null) {
+            id = getResources().getIdentifier("alertTitle", "id", "android");
+            if (id != 0) titleView = dialog.findViewById(id);
+        }
+        if (titleView != null) {
+            titleView.setTextColor(color);
+            titleView.setTypeface(titleView.getTypeface(), Typeface.BOLD);
+        }
+
+        TextView msg = dialog.findViewById(android.R.id.message);
+        if (msg != null) msg.setTextColor(color);
+
+        android.widget.Button bPos = dialog.getButton(DialogInterface.BUTTON_POSITIVE);
+        android.widget.Button bNeg = dialog.getButton(DialogInterface.BUTTON_NEGATIVE);
+        android.widget.Button bNeu = dialog.getButton(DialogInterface.BUTTON_NEUTRAL);
+        if (bPos != null) { bPos.setTextColor(color); bPos.setAllCaps(false); }
+        if (bNeg != null) { bNeg.setTextColor(color); bNeg.setAllCaps(false); }
+        if (bNeu != null) { bNeu.setTextColor(color); bNeu.setAllCaps(false); }
+    }
+
+    // ---------- Графік ----------
     private void setupChart(LineChart chart) {
+        int txtColor = androidx.core.content.ContextCompat.getColor(this, R.color.weather_card_text);
+
         chart.getDescription().setEnabled(false);
-        chart.getLegend().setTextColor(Color.WHITE);
+        chart.getLegend().setTextColor(txtColor);
 
         XAxis xAxis = chart.getXAxis();
-        xAxis.setTextColor(Color.WHITE);
+        xAxis.setTextColor(txtColor);
         xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
 
-        chart.getAxisLeft().setTextColor(Color.WHITE);
+        chart.getAxisLeft().setTextColor(txtColor);
         chart.getAxisRight().setEnabled(false);
+
+        chart.setNoDataText("Немає даних");
+        chart.setNoDataTextColor(txtColor);
     }
 
-    private void loadDayData() {
+    private void setChartDataFromApi(List<SensorPointDto> points, boolean isDay) {
+        int txtColor = androidx.core.content.ContextCompat.getColor(this, R.color.weather_card_text);
+
         List<Entry> temp = new ArrayList<>();
-        List<Entry> hum = new ArrayList<>();
-        for (int i = 0; i < 24; i++) {
-            temp.add(new Entry(i, 20 + (float)Math.random()*5));
-            hum.add(new Entry(i, 40 + (float)Math.random()*10));
-        }
-        setChartData(temp, hum);
-    }
+        List<Entry> hum  = new ArrayList<>();
+        List<String> labels = new ArrayList<>();
 
-    private void loadWeekData() {
-        List<Entry> temp = new ArrayList<>();
-        List<Entry> hum = new ArrayList<>();
-        for (int i = 0; i < 7; i++) {
-            temp.add(new Entry(i, 18 + (float)Math.random()*6));
-            hum.add(new Entry(i, 35 + (float)Math.random()*15));
-        }
-        setChartData(temp, hum);
-    }
+        ZoneId kyiv = ZoneId.of("Europe/Kyiv");
+        DateTimeFormatter hhmm = DateTimeFormatter.ofPattern("HH:mm", new Locale("uk", "UA"));
+        DateTimeFormatter ddMM = DateTimeFormatter.ofPattern("d.MM", new Locale("uk", "UA"));
 
-    private void setChartData(List<Entry> temp, List<Entry> hum) {
+        for (int i = 0; i < points.size(); i++) {
+            SensorPointDto p = points.get(i);
+            temp.add(new Entry(i, (float) p.temperature));
+            hum .add(new Entry(i, (float) p.humidity));
+
+            ZonedDateTime local = Instant.parse(p.timestampUtc).atZone(kyiv);
+            labels.add(isDay ? local.toLocalTime().format(hhmm) : local.toLocalDate().format(ddMM));
+        }
+
         LineDataSet tempSet = new LineDataSet(temp, "Температура °C");
         tempSet.setColor(Color.RED);
         tempSet.setCircleColor(Color.RED);
-        tempSet.setValueTextColor(Color.WHITE);
+        tempSet.setDrawValues(true);
+        tempSet.setValueTextColor(txtColor);
+        tempSet.setValueTextSize(10f);
+        tempSet.setValueFormatter(new com.github.mikephil.charting.formatter.ValueFormatter() {
+            @Override
+            public String getFormattedValue(float value) {
+                return String.format(Locale.getDefault(), "%.0f°", value);
+            }
+        });
 
         LineDataSet humSet = new LineDataSet(hum, "Вологість %");
         humSet.setColor(Color.BLUE);
         humSet.setCircleColor(Color.BLUE);
-        humSet.setValueTextColor(Color.WHITE);
+        humSet.setDrawValues(false);
+        humSet.setValueTextColor(txtColor);
 
+        chart.getXAxis().setGranularity(1f);
+        chart.getXAxis().setLabelCount(Math.min(6, labels.size()), true);
+        chart.getXAxis().setValueFormatter(new com.github.mikephil.charting.formatter.ValueFormatter() {
+            @Override public String getAxisLabel(float value, AxisBase axis) {
+                int i = (int) value;
+                return (i >= 0 && i < labels.size()) ? labels.get(i) : "";
+            }
+        });
+
+        chart.setExtraTopOffset(12f);
         chart.setData(new LineData(tempSet, humSet));
         chart.invalidate();
     }
 
-    private void highlightButton(MaterialButton active, MaterialButton inactive) {
-        active.setBackgroundColor(getResources().getColor(R.color.main_color));
-        active.setTextColor(Color.WHITE);
-
-        inactive.setBackgroundColor(getResources().getColor(R.color.bg_weather_card));
-        inactive.setTextColor(getResources().getColor(R.color.weather_card_text));
+    // ---------- Завантаження серій ----------
+    private void loadDayDataFor(String chipId) {
+        SensorDataApiService api = ApiClientMain.getClient(this).create(SensorDataApiService.class);
+        api.getDay(chipId).enqueue(new Callback<List<SensorPointDto>>() {
+            @Override public void onResponse(Call<List<SensorPointDto>> call, Response<List<SensorPointDto>> resp) {
+                if (resp.isSuccessful() && resp.body() != null && !resp.body().isEmpty()) {
+                    setChartDataFromApi(resp.body(), true);
+                } else {
+                    chart.clear(); chart.setNoDataText("Немає даних за день");
+                }
+            }
+            @Override public void onFailure(Call<List<SensorPointDto>> call, Throwable t) {
+                chart.clear(); chart.setNoDataText("Помилка завантаження");
+            }
+        });
     }
 
-    // --------- 🔧 інше ---------
+    private void loadWeekDataFor(String chipId) {
+        SensorDataApiService api = ApiClientMain.getClient(this).create(SensorDataApiService.class);
+        api.getWeek(chipId).enqueue(new Callback<List<SensorPointDto>>() {
+            @Override public void onResponse(Call<List<SensorPointDto>> call, Response<List<SensorPointDto>> resp) {
+                if (resp.isSuccessful() && resp.body() != null && !resp.body().isEmpty()) {
+                    setChartDataFromApi(resp.body(), false);
+                } else {
+                    chart.clear(); chart.setNoDataText("Немає даних за 7 днів");
+                }
+            }
+            @Override public void onFailure(Call<List<SensorPointDto>> call, Throwable t) {
+                chart.clear(); chart.setNoDataText("Помилка завантаження");
+            }
+        });
+    }
+
+    private void updateChartForSelection() {
+        if (selectedChipId == null) {
+            chart.clear();
+            chart.setNoDataText("Виберіть кімнату");
+            return;
+        }
+        if (isDaySelected) loadDayDataFor(selectedChipId);
+        else               loadWeekDataFor(selectedChipId);
+    }
+
+    // ---------- Робота з кімнатами ----------
     private void startPeriodicRoomRefresh() {
         refreshRunnable = new Runnable() {
             @Override public void run() {
@@ -223,11 +670,121 @@ public class MainActivity extends ImmersiveActivity {
             @Override
             public void onResponse(Call<List<RoomWithSensorDto>> call, Response<List<RoomWithSensorDto>> response) {
                 if (response.isSuccessful() && response.body() != null) {
-                    roomAdapter.submitList(new ArrayList<>(response.body()));
+                    List<RoomWithSensorDto> rooms = new ArrayList<>(response.body());
+                    roomAdapter.submitList(rooms);
+
+                    roomsCache.clear();
+                    roomsCache.addAll(rooms);
+                    renderRoomChips(rooms);
+
+                    if (selectedChipId == null && !roomsCache.isEmpty()) {
+                        selectedChipId = roomsCache.get(0).getChipId();
+                        checkChipByChipId(selectedChipId);
+                        updateChartForSelection();
+                    }
+
+                    if (roomsCache.isEmpty()) {
+                        selectedChipId = null;
+                        chart.clear();
+                        chart.setNoDataText("Немає кімнат");
+                    }
                 }
             }
             @Override public void onFailure(Call<List<RoomWithSensorDto>> call, Throwable t) { }
         });
+    }
+
+    private void renderRoomChips(List<RoomWithSensorDto> rooms) {
+        chipGroupRooms.setOnCheckedStateChangeListener(null);
+        chipGroupRooms.removeAllViews();
+
+        if (rooms == null || rooms.isEmpty()) {
+            selectedChipId = null;
+            chart.clear();
+            chart.setNoDataText("Немає кімнат");
+            return;
+        }
+
+        int toCheckId = View.NO_ID;
+
+        for (int i = 0; i < rooms.size(); i++) {
+            RoomWithSensorDto r = rooms.get(i);
+            if (r == null || r.getChipId() == null) continue;
+
+            Chip chip = new Chip(this, null,
+                    com.google.android.material.R.style.Widget_MaterialComponents_Chip_Choice);
+            chip.setId(View.generateViewId());
+
+            String title = (r.getRoomName() == null || r.getRoomName().trim().isEmpty())
+                    ? ("Кімната " + (i + 1))
+                    : r.getRoomName();
+            chip.setText(title);
+            chip.setTag(r.getChipId());
+
+            chip.setCheckable(true);
+            chip.setClickable(true);
+            chip.setCheckedIconVisible(false);
+            chip.setEnsureMinTouchTargetSize(true);
+            chip.setEllipsize(TextUtils.TruncateAt.END);
+            chip.setMaxLines(1);
+
+            chip.setChipBackgroundColor(
+                    AppCompatResources.getColorStateList(this, R.color.chip_bg_selector));
+            chip.setTextColor(
+                    AppCompatResources.getColorStateList(this, R.color.chip_text_selector));
+            chip.setChipStrokeWidth(dp(2f));
+            chip.setChipStrokeColor(
+                    AppCompatResources.getColorStateList(this, R.color.chip_stroke_selector));
+            chip.setRippleColor(
+                    AppCompatResources.getColorStateList(this, R.color.chip_ripple_selector));
+
+            chipGroupRooms.addView(chip);
+
+            if (selectedChipId != null && selectedChipId.equals(r.getChipId())) {
+                toCheckId = chip.getId();
+            }
+        }
+
+        if (chipGroupRooms.getChildCount() > 0) {
+            if (toCheckId != View.NO_ID) {
+                chipGroupRooms.check(toCheckId);
+            } else {
+                View first = chipGroupRooms.getChildAt(0);
+                chipGroupRooms.check(first.getId());
+                Object tag = first.getTag();
+                selectedChipId = (tag != null) ? tag.toString() : null;
+            }
+        }
+
+        chipGroupRooms.setOnCheckedStateChangeListener((group, checkedIds) -> {
+            if (checkedIds == null || checkedIds.isEmpty()) return;
+            int id = checkedIds.get(0);
+            View v = group.findViewById(id);
+            if (!(v instanceof Chip)) return;
+
+            String newChipId = String.valueOf(v.getTag());
+            if (!newChipId.equals(selectedChipId)) {
+                selectedChipId = newChipId;
+                updateChartForSelection();
+            }
+        });
+    }
+
+    private void checkChipByChipId(String chipId) {
+        for (int i = 0; i < chipGroupRooms.getChildCount(); i++) {
+            View v = chipGroupRooms.getChildAt(i);
+            if (v instanceof Chip && chipId.equals(v.getTag())) {
+                chipGroupRooms.check(v.getId());
+                selectedChipId = chipId;
+                return;
+            }
+        }
+    }
+
+    // ---------- Допоміжні ----------
+    private float dp(float v) {
+        return TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP, v, getResources().getDisplayMetrics());
     }
 
     private String getSavedUsername() {
@@ -268,9 +825,18 @@ public class MainActivity extends ImmersiveActivity {
         });
     }
 
+    private void highlightButton(MaterialButton active, MaterialButton inactive) {
+        active.setBackgroundColor(ContextCompat.getColor(this, R.color.main_color));
+        active.setTextColor(Color.WHITE);
+
+        inactive.setBackgroundColor(ContextCompat.getColor(this, R.color.bg_weather_card));
+        inactive.setTextColor(ContextCompat.getColor(this, R.color.weather_card_text));
+    }
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
         if (refreshRunnable != null) handler.removeCallbacks(refreshRunnable);
+        try { bleManager.stopScan(); } catch (Exception ignore) {}
     }
 }

@@ -1,281 +1,318 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fillViewport="true"
     android:background="@color/background_color"
     tools:context=".MainActivity">
 
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:id="@+id/main"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+    <!-- 🔹 Прокручуваний контент -->
+    <ScrollView
+        android:id="@+id/mainScroll"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:fillViewport="true"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
 
-        <!-- Твій Toolbar -->
-        <androidx.appcompat.widget.Toolbar
-            android:id="@+id/custom_toolbar"
-            android:layout_width="0dp"
-            android:layout_height="?attr/actionBarSize"
-            android:background="@drawable/rounded_toolbar"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="parent">
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/main"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
 
-            <RelativeLayout
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:gravity="center_vertical">
+            <!-- 🔹 Toolbar -->
+            <androidx.appcompat.widget.Toolbar
+                android:id="@+id/custom_toolbar"
+                android:layout_width="0dp"
+                android:layout_height="?attr/actionBarSize"
+                android:background="@drawable/rounded_toolbar"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent">
+
+                <RelativeLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:id="@+id/toolbar_title"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_centerInParent="true"
+                        android:text="username house"
+                        android:textColor="@color/weather_card_text"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
+
+                    <ImageView
+                        android:id="@+id/user_icon"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:layout_alignParentEnd="true"
+                        android:layout_centerVertical="true"
+                        android:layout_marginEnd="16dp"
+                        android:src="@drawable/ic_user"
+                        android:contentDescription="User icon" />
+                </RelativeLayout>
+            </androidx.appcompat.widget.Toolbar>
+
+            <!-- 🔹 Заголовок над погодою -->
+            <TextView
+                android:id="@+id/labelWeather"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_marginEnd="16dp"
+                android:layout_marginTop="12dp"
+                android:text="Погода довкола"
+                android:textColor="@color/weather_card_text"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                app:layout_constraintTop_toBottomOf="@id/custom_toolbar"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent" />
+
+            <!-- 🔹 Карточка погоди -->
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:id="@+id/weather_card"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_margin="10dp"
+                android:background="@drawable/bg_chip_rounded"
+                android:padding="16dp"
+                app:layout_constraintTop_toBottomOf="@id/labelWeather"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent">
 
                 <TextView
-                    android:id="@+id/toolbar_title"
+                    android:id="@+id/textWeatherCity"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_centerInParent="true"
-                    android:text="username house"
+                    android:background="@drawable/bg_weather_label"
+                    android:text="Місто: ..."
                     android:textColor="@color/weather_card_text"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
 
                 <ImageView
-                    android:id="@+id/user_icon"
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:layout_alignParentEnd="true"
-                    android:layout_centerVertical="true"
-                    android:layout_marginEnd="16dp"
-                    android:src="@drawable/ic_user"
-                    android:contentDescription="User icon" />
-            </RelativeLayout>
-        </androidx.appcompat.widget.Toolbar>
+                    android:id="@+id/imageWeatherIcon"
+                    android:layout_width="109dp"
+                    android:layout_height="105dp"
+                    android:layout_marginStart="8dp"
+                    android:layout_marginTop="16dp"
+                    android:contentDescription="Іконка погоди"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@id/textWeatherCity" />
 
-    <!-- Заголовок над погодою -->
-    <TextView
-        android:id="@+id/labelWeather"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginEnd="16dp"
-        android:layout_marginTop="12dp"
-        android:text="Погода довкола"
-        android:textColor="@color/weather_card_text"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        app:layout_constraintTop_toBottomOf="@id/custom_toolbar"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+                <TextView
+                    android:id="@+id/textWeatherTemp"
+                    android:layout_width="200dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="15dp"
+                    android:layout_marginTop="15dp"
+                    android:background="@drawable/bg_weather_label"
+                    android:text="🌡 Температура: ..."
+                    android:textColor="@color/weather_card_text"
+                    android:textSize="15sp"
+                    app:layout_constraintStart_toEndOf="@id/imageWeatherIcon"
+                    app:layout_constraintTop_toBottomOf="@id/textWeatherCity" />
 
-    <!-- Карточка погоди -->
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:id="@+id/weather_card"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_margin="10dp"
-        android:background="@drawable/bg_chip_rounded"
-        android:padding="16dp"
-        app:layout_constraintTop_toBottomOf="@id/labelWeather"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
+                <TextView
+                    android:id="@+id/textWeatherHumidity"
+                    android:layout_width="200dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:background="@drawable/bg_weather_label"
+                    android:text="💧 Вологість: ..."
+                    android:textColor="@color/weather_card_text"
+                    android:textSize="15sp"
+                    app:layout_constraintStart_toStartOf="@id/textWeatherTemp"
+                    app:layout_constraintTop_toBottomOf="@id/textWeatherTemp" />
 
-        <TextView
-            android:id="@+id/textWeatherCity"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="@drawable/bg_weather_label"
-            android:text="Місто: ..."
-            android:textColor="@color/weather_card_text"
-            android:textSize="15sp"
-            android:textStyle="bold"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+                <TextView
+                    android:id="@+id/textWeatherPressure"
+                    android:layout_width="200dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:background="@drawable/bg_weather_label"
+                    android:text="🧭 Тиск: ..."
+                    android:textColor="@color/weather_card_text"
+                    android:textSize="15sp"
+                    app:layout_constraintStart_toStartOf="@id/textWeatherTemp"
+                    app:layout_constraintTop_toBottomOf="@id/textWeatherHumidity" />
 
-        <ImageView
-            android:id="@+id/imageWeatherIcon"
-            android:layout_width="109dp"
-            android:layout_height="105dp"
-            android:layout_marginStart="8dp"
-            android:layout_marginTop="16dp"
-            android:contentDescription="Іконка погоди"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/textWeatherCity" />
+                <TextView
+                    android:id="@+id/textWeatherMain"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:background="@drawable/bg_weather_label"
+                    android:text="Погода: ..."
+                    android:textColor="@color/weather_card_text"
+                    android:textSize="15sp"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@id/textWeatherPressure" />
 
-        <TextView
-            android:id="@+id/textWeatherTemp"
-            android:layout_width="200dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="15dp"
-            android:layout_marginTop="15dp"
-            android:background="@drawable/bg_weather_label"
-            android:text="🌡 Температура: ..."
-            android:textColor="@color/weather_card_text"
-            android:textSize="15sp"
-            app:layout_constraintStart_toEndOf="@id/imageWeatherIcon"
-            app:layout_constraintTop_toBottomOf="@id/textWeatherCity" />
+                <TextView
+                    android:id="@+id/textWeatherDescription"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:background="@drawable/bg_weather_label"
+                    android:text="Опис: ..."
+                    android:textColor="@color/weather_card_text"
+                    android:textSize="15sp"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@id/textWeatherMain" />
+            </androidx.constraintlayout.widget.ConstraintLayout>
 
-        <TextView
-            android:id="@+id/textWeatherHumidity"
-            android:layout_width="200dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/bg_weather_label"
-            android:text="💧 Вологість: ..."
-            android:textColor="@color/weather_card_text"
-            android:textSize="15sp"
-            app:layout_constraintStart_toStartOf="@id/textWeatherTemp"
-            app:layout_constraintTop_toBottomOf="@id/textWeatherTemp" />
+            <!-- 🔹 Заголовок над списком кімнат -->
+            <TextView
+                android:id="@+id/labelRooms"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_marginEnd="16dp"
+                android:layout_marginTop="10dp"
+                android:text="Мої кімнати"
+                android:textColor="@color/weather_card_text"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                app:layout_constraintTop_toBottomOf="@id/weather_card"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent" />
 
-        <TextView
-            android:id="@+id/textWeatherPressure"
-            android:layout_width="200dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/bg_weather_label"
-            android:text="🧭 Тиск: ..."
-            android:textColor="@color/weather_card_text"
-            android:textSize="15sp"
-            app:layout_constraintStart_toStartOf="@id/textWeatherTemp"
-            app:layout_constraintTop_toBottomOf="@id/textWeatherHumidity" />
+            <!-- 🔹 Горизонтальний RecyclerView -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/room_recycler_view"
+                android:layout_width="0dp"
+                android:layout_height="200dp"
+                android:layout_marginTop="20dp"
+                android:clipToPadding="false"
+                android:overScrollMode="never"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/labelRooms"
+                tools:listitem="@layout/item_room_chip" />
 
-        <TextView
-            android:id="@+id/textWeatherMain"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:background="@drawable/bg_weather_label"
-            android:text="Погода: ..."
-            android:textColor="@color/weather_card_text"
-            android:textSize="15sp"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/textWeatherPressure" />
+            <!-- 🔹 Графіки -->
+            <TextView
+                android:id="@+id/labelCharts"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_marginTop="10dp"
+                android:text="Графіки змін"
+                android:textColor="@color/weather_card_text"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                app:layout_constraintTop_toBottomOf="@id/room_recycler_view"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"/>
 
-        <TextView
-            android:id="@+id/textWeatherDescription"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/bg_weather_label"
-            android:text="Опис: ..."
-            android:textColor="@color/weather_card_text"
-            android:textSize="15sp"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/textWeatherMain" />
-    </androidx.constraintlayout.widget.ConstraintLayout>
+            <!-- 🔹 Кнопки -->
+            <LinearLayout
+                android:id="@+id/chartButtons"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:layout_marginTop="8dp"
+                app:layout_constraintTop_toBottomOf="@id/labelCharts"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent">
 
-    <!-- Заголовок над списком кімнат -->
-    <TextView
-        android:id="@+id/labelRooms"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginEnd="16dp"
-        android:layout_marginTop="10dp"
-        android:text="Мої кімнати"
-        android:textColor="@color/weather_card_text"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        app:layout_constraintTop_toBottomOf="@id/weather_card"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnDay"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="За день"
+                    android:textAllCaps="false"
+                    android:layout_marginEnd="8dp"/>
 
-    <!-- Горизонтальний RecyclerView -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/room_recycler_view"
-        android:layout_width="0dp"
-        android:layout_height="200dp"
-        android:layout_marginTop="20dp"
-        android:clipToPadding="false"
-        android:overScrollMode="never"
-        android:paddingStart="8dp"
-        android:paddingEnd="8dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/labelRooms"
-        tools:listitem="@layout/item_room_chip" />
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnWeek"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="За 7 днів"
+                    android:textAllCaps="false"/>
+            </LinearLayout>
 
-    <!-- 📊 Графік температури/вологості -->
-    <!-- Заголовок над графіком -->
-    <TextView
-        android:id="@+id/labelCharts"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="10dp"
-        android:text="Графіки змін"
-        android:textColor="@color/weather_card_text"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        app:layout_constraintTop_toBottomOf="@id/room_recycler_view"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
+            <!-- 🔹 Чіпи кімнат -->
+            <HorizontalScrollView
+                android:id="@+id/chartRoomChipsWrapper"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_marginEnd="8dp"
+                android:layout_marginTop="8dp"
+                android:overScrollMode="never"
+                android:fillViewport="true"
+                app:layout_constraintTop_toBottomOf="@id/chartButtons"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent">
 
-    <!-- Кнопки -->
-    <LinearLayout
-        android:id="@+id/chartButtons"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center"
-        android:layout_marginTop="8dp"
-        app:layout_constraintTop_toBottomOf="@id/labelCharts"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
+                <com.google.android.material.chip.ChipGroup
+                    android:id="@+id/chipGroupRooms"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp"
+                    app:singleLine="true"
+                    app:singleSelection="true"
+                    app:selectionRequired="true"/>
+            </HorizontalScrollView>
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnDay"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="За день"
-            android:textAllCaps="false"
-            android:layout_marginEnd="8dp"/>
+            <!-- 🔹 Графік -->
+            <com.github.mikephil.charting.charts.LineChart
+                android:id="@+id/chart"
+                android:layout_width="0dp"
+                android:layout_height="250dp"
+                android:layout_margin="12dp"
+                android:background="@drawable/bg_chip_rounded"
+                app:layout_constraintTop_toBottomOf="@id/chartRoomChipsWrapper"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"/>
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnWeek"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="За 7 днів"
-            android:textAllCaps="false"/>
-    </LinearLayout>
+            <!-- 🔹 Header Image -->
+            <LinearLayout
+                android:id="@+id/header"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_margin="12dp"
+                android:layout_marginTop="10dp"
+                android:background="@drawable/bg_chip_rounded"
+                android:orientation="vertical"
+                android:padding="12dp"
+                app:layout_constraintTop_toBottomOf="@id/chart"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent">
 
-    <!-- Один графік -->
-    <com.github.mikephil.charting.charts.LineChart
-        android:id="@+id/chart"
-        android:layout_width="0dp"
-        android:layout_height="250dp"
-        android:layout_margin="12dp"
-        android:background="@drawable/bg_chip_rounded"
-        app:layout_constraintTop_toBottomOf="@id/chartButtons"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
+                <com.google.android.material.imageview.ShapeableImageView
+                    android:id="@+id/headerImage"
+                    android:layout_width="wrap_content"
+                    android:layout_height="95dp"
+                    android:contentDescription="@string/room_image_desc"
+                    android:scaleType="centerCrop"
+                    android:src="@drawable/forest"
+                    app:shapeAppearanceOverlay="@style/RoundedImageView" />
+            </LinearLayout>
 
+        </androidx.constraintlayout.widget.ConstraintLayout>
+    </ScrollView>
 
-    <!-- Header Image -->
-    <LinearLayout
-        android:id="@+id/header"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_margin="12dp"
-        android:layout_marginTop="10dp"
-        android:background="@drawable/bg_chip_rounded"
-        android:orientation="vertical"
-        android:padding="12dp"
-        app:layout_constraintTop_toBottomOf="@id/chart"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
-
-        <com.google.android.material.imageview.ShapeableImageView
-            android:id="@+id/headerImage"
-            android:layout_width="wrap_content"
-            android:layout_height="95dp"
-            android:contentDescription="@string/room_image_desc"
-            android:scaleType="centerCrop"
-            android:src="@drawable/forest"
-            app:shapeAppearanceOverlay="@style/RoundedImageView" />
-    </LinearLayout>
-
-    <!-- FAB -->
+    <!-- 🔹 FAB (закріплений у правому нижньому куті, поза ScrollView) -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fab_add_room"
         android:layout_width="wrap_content"
@@ -289,6 +326,4 @@
         app:tint="@color/bg_weather_card"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintBottom_toBottomOf="parent" />
-
 </androidx.constraintlayout.widget.ConstraintLayout>
-</ScrollView>
