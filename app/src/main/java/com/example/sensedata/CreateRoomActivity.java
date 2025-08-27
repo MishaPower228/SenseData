@@ -1,9 +1,7 @@
 package com.example.sensedata;
 
-import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
-import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -19,8 +17,6 @@ import android.widget.Toast;
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
 
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.checkbox.MaterialCheckBox;
@@ -103,13 +99,17 @@ public class CreateRoomActivity extends ImmersiveActivity {
                 findViewById(R.id.container1),
                 findViewById(R.id.container2),
                 findViewById(R.id.container3),
-                findViewById(R.id.container4)
+                findViewById(R.id.container4),
+                findViewById(R.id.container5),
+                findViewById(R.id.container6)
         };
         imageViews = new ImageView[] {
                 findViewById(R.id.img1),
                 findViewById(R.id.img2),
                 findViewById(R.id.img3),
-                findViewById(R.id.img4)
+                findViewById(R.id.img4),
+                findViewById(R.id.img5),
+                findViewById(R.id.img6)
         };
         setupImageSelection();
 
@@ -131,20 +131,16 @@ public class CreateRoomActivity extends ImmersiveActivity {
         for (int i = 0; i < imageViews.length; i++) {
             final int idx = i;
             imageViews[i].setOnClickListener(v -> {
-                if (selectedIndex == idx) {
-                    containers[idx].setBackgroundResource(R.drawable.bg_image_selector);
-                    v.setScaleX(1f); v.setScaleY(1f);
-                    selectedIndex = -1; selectedImage = null;
-                    return;
-                }
-                for (int j = 0; j < containers.length; j++) {
-                    containers[j].setBackgroundResource(R.drawable.bg_image_selector);
-                    imageViews[j].setScaleX(1f); imageViews[j].setScaleY(1f);
-                }
-                containers[idx].setBackgroundResource(R.drawable.bg_image_selected);
+                // Скидаємо всім
+                for (FrameLayout c : containers) c.setSelected(false);
+                for (ImageView iv : imageViews) { iv.setScaleX(1f); iv.setScaleY(1f); }
+
+                // Виділяємо вибраний
+                containers[idx].setSelected(true);
                 v.setScaleX(0.95f); v.setScaleY(0.95f);
+
                 selectedIndex = idx;
-                selectedImage = (String) v.getTag(); // тег заданий у XML
+                selectedImage = (String) v.getTag();
             });
         }
     }

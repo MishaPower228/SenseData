@@ -1,9 +1,11 @@
 package com.example.sensedata;
 
+import android.Manifest;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Typeface;
@@ -15,6 +17,7 @@ import android.text.style.StyleSpan;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -28,9 +31,14 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.content.res.AppCompatResources;
 import androidx.appcompat.widget.PopupMenu;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.example.sensedata.adapter.RoomAdapter;
 import com.example.sensedata.model.RoomWithSensorDto;
@@ -92,7 +100,7 @@ public class MainActivity extends ImmersiveActivity {
     private final List<RoomWithSensorDto> roomsCache = new ArrayList<>();
     private String selectedChipId = null;   // кімната для графіка
 
-
+    private static final int PERMISSION_REQUEST_CODE = 1001;
 
     // 🔵 BLE для оновлення Wi-Fi
     private BleManager bleManager;
@@ -102,6 +110,59 @@ public class MainActivity extends ImmersiveActivity {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
+
+        getWindow().getAttributes().layoutInDisplayCutoutMode =
+                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+
+        View root = findViewById(android.R.id.content);
+        ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
+            Insets cutoutInsets = insets.getInsets(WindowInsetsCompat.Type.displayCutout());
+
+            androidx.appcompat.widget.Toolbar toolbar = findViewById(R.id.custom_toolbar);
+            if (toolbar == null) {
+                toolbar = findViewById(R.id.toolbar);
+            }
+
+            if (toolbar != null) {
+                toolbar.setPadding(
+                        toolbar.getPaddingLeft(),
+                        cutoutInsets.top, // 👈 тут враховується камера
+                        toolbar.getPaddingRight(),
+                        toolbar.getPaddingBottom()
+                );
+            }
+
+            return insets;
+        });
+
+        requestAllPermissions();
+
+        // SwipeRefreshLayout
+        SwipeRefreshLayout swipeRefresh = findViewById(R.id.swipeRefresh);
+
+        // 🎨 Кольори індикатора
+        swipeRefresh.setColorSchemeColors(
+                ContextCompat.getColor(this, R.color.main_color) // твій основний акцент
+        );
+        swipeRefresh.setProgressBackgroundColorSchemeColor(
+                ContextCompat.getColor(this, R.color.bg_weather_card) // фон кружечка
+        );
+
+        // 🔄 Логіка оновлення
+        swipeRefresh.setOnRefreshListener(() -> {
+            // перезапускаємо погоду
+            weatherManager.startWeatherUpdates();
+
+            // підвантажуємо кімнати
+            loadRoomsFromServer();
+
+            // оновлюємо графік
+            updateChartForSelection();
+
+            // зупинка індикатора через 1 сек.
+            swipeRefresh.postDelayed(() -> swipeRefresh.setRefreshing(false), 1000);
+        });
+
 
         // Toolbar
         Toolbar toolbar = findViewById(R.id.custom_toolbar);
@@ -137,7 +198,6 @@ public class MainActivity extends ImmersiveActivity {
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> {
                     if (result.getResultCode() == RESULT_OK && result.getData() != null) {
-                        // Якщо потрібно — обробиш chipId/roomName/imageName
                         String chipId = result.getData().getStringExtra("chipId");
                         String roomName = result.getData().getStringExtra("roomName");
                         String imageName = result.getData().getStringExtra("imageName");
@@ -153,7 +213,7 @@ public class MainActivity extends ImmersiveActivity {
         chart  = findViewById(R.id.chart);
         btnDay = findViewById(R.id.btnDay);
         btnWeek = findViewById(R.id.btnWeek);
-        btnTemperature = findViewById(R.id.btnTemperature); // 👈 нова кнопка
+        btnTemperature = findViewById(R.id.btnTemperature);
         btnHumidity = findViewById(R.id.btnHumidity);
         setupChart(chart);
 
@@ -171,7 +231,7 @@ public class MainActivity extends ImmersiveActivity {
             isDaySelected = false;
             updateChartForSelection();
         });
-        highlightButton(btnDay, btnWeek); // дефолт
+        highlightButton(btnDay, btnWeek);
 
         // Кнопки ТЕМПЕРАТУРА / ВОЛОГІСТЬ
         btnTemperature.setOnClickListener(v -> {
@@ -184,12 +244,13 @@ public class MainActivity extends ImmersiveActivity {
             showTemperature = false;
             updateChartForSelection();
         });
-        highlightButton(btnTemperature, btnHumidity); // дефолт
+        highlightButton(btnTemperature, btnHumidity);
 
         // Завантаження кімнат
         loadRoomsFromServer();
         startPeriodicRoomRefresh();
     }
+
 
     private void setupRoomsRecycler() {
         roomRecyclerView = findViewById(R.id.room_recycler_view);
@@ -257,13 +318,17 @@ public class MainActivity extends ImmersiveActivity {
                 view.findViewById(R.id.container1),
                 view.findViewById(R.id.container2),
                 view.findViewById(R.id.container3),
-                view.findViewById(R.id.container4)
+                view.findViewById(R.id.container4),
+                view.findViewById(R.id.container5),
+                view.findViewById(R.id.container6)
         };
         ImageView[] imageViews = new ImageView[] {
                 view.findViewById(R.id.img1),
                 view.findViewById(R.id.img2),
                 view.findViewById(R.id.img3),
-                view.findViewById(R.id.img4)
+                view.findViewById(R.id.img4),
+                view.findViewById(R.id.img5),
+                view.findViewById(R.id.img6)
         };
 
         etName.setText(room.getRoomName());
@@ -455,6 +520,9 @@ public class MainActivity extends ImmersiveActivity {
                             setBusyFalse.run();
                             if (dialog.isShowing()) dialog.dismiss();
                             Toast.makeText(MainActivity.this, "Wi-Fi успішно оновлено", Toast.LENGTH_SHORT).show();
+                            if (dialog.isShowing()) {
+                                dialog.dismiss();   // 👈 переніс після тосту, щоб точно закривалось
+                            }
                         });
                     }
                     @Override public void onError(String message) {
@@ -765,13 +833,15 @@ public class MainActivity extends ImmersiveActivity {
                     if (selectedChipId == null && !roomsCache.isEmpty()) {
                         selectedChipId = roomsCache.get(0).getChipId();
                         checkChipByChipId(selectedChipId);
-                        updateChartForSelection();
                     }
 
                     if (roomsCache.isEmpty()) {
                         selectedChipId = null;
                         chart.clear();
                         chart.setNoDataText("Немає кімнат");
+                    } else {
+                        // 👇 гарантовано оновлюємо графік після завантаження кімнат
+                        updateChartForSelection();
                     }
                 }
             }
@@ -923,5 +993,45 @@ public class MainActivity extends ImmersiveActivity {
         super.onDestroy();
         if (refreshRunnable != null) handler.removeCallbacks(refreshRunnable);
         try { bleManager.stopScan(); } catch (Exception ignore) {}
+    }
+
+    private void requestAllPermissions() {
+        String[] permissions = new String[] {
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION,
+                Manifest.permission.BLUETOOTH_SCAN,
+                Manifest.permission.BLUETOOTH_CONNECT,
+                Manifest.permission.BLUETOOTH_ADVERTISE,
+                Manifest.permission.POST_NOTIFICATIONS
+        };
+
+        List<String> toRequest = new ArrayList<>();
+        for (String perm : permissions) {
+            if (ActivityCompat.checkSelfPermission(this, perm) != PackageManager.PERMISSION_GRANTED) {
+                toRequest.add(perm);
+            }
+        }
+
+        if (!toRequest.isEmpty()) {
+            ActivityCompat.requestPermissions(
+                    this,
+                    toRequest.toArray(new String[0]),
+                    PERMISSION_REQUEST_CODE
+            );
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == PERMISSION_REQUEST_CODE) {
+            for (int i = 0; i < permissions.length; i++) {
+                if (grantResults[i] != PackageManager.PERMISSION_GRANTED) {
+                    Toast.makeText(this,
+                            "Дозвіл " + permissions[i] + " не надано. Додаток може працювати некоректно.",
+                            Toast.LENGTH_LONG).show();
+                }
+            }
+        }
     }
 }

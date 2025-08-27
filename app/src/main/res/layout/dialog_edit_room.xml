@@ -38,26 +38,32 @@
             android:layout_height="wrap_content"
             android:text="Оберіть нове зображення"
             android:textColor="@color/weather_card_text"
-            android:layout_marginTop="16dp"/>
+            android:padding="12dp"
+            android:layout_marginTop="16dp" />
 
+        <!-- Сітка зображень -->
         <GridLayout
-            android:id="@+id/gridImages"
+            android:id="@+id/imageSelectionGrid"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:columnCount="2"
+            android:columnCount="3"
+            android:rowCount="2"
+            android:alignmentMode="alignMargins"
+            android:columnOrderPreserved="false"
             android:useDefaultMargins="true"
-            android:layout_marginTop="8dp">
+            android:gravity="center_horizontal"
+            android:layout_marginBottom="16dp">
 
-            <!-- картка 1 -->
+            <!-- Living room -->
             <FrameLayout
                 android:id="@+id/container1"
                 android:layout_width="0dp"
-                android:layout_height="140dp"
+                android:layout_height="100dp"
                 android:layout_columnWeight="1"
+                android:layout_rowWeight="1"
                 android:layout_gravity="fill"
-                android:background="@drawable/bg_image_selector"
-                android:foreground="?attr/selectableItemBackgroundBorderless"
-                android:padding="4dp">
+                android:background="@drawable/bg_image_selector">
+
                 <ImageView
                     android:id="@+id/img1"
                     android:layout_width="match_parent"
@@ -66,72 +72,119 @@
                     android:src="@drawable/livingroom"
                     android:background="@drawable/bg_rounded_image"
                     android:clipToOutline="true"
-                    android:tag="livingroom"/>
+                    android:contentDescription="Living Room"
+                    android:tag="livingroom" />
             </FrameLayout>
 
-            <!-- картка 2 -->
+            <!-- Kitchen -->
             <FrameLayout
                 android:id="@+id/container2"
                 android:layout_width="0dp"
-                android:layout_height="140dp"
+                android:layout_height="100dp"
                 android:layout_columnWeight="1"
+                android:layout_rowWeight="1"
                 android:layout_gravity="fill"
-                android:background="@drawable/bg_image_selector"
-                android:foreground="?attr/selectableItemBackgroundBorderless"
-                android:padding="4dp">
+                android:background="@drawable/bg_image_selector">
+
                 <ImageView
                     android:id="@+id/img2"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:scaleType="centerCrop"
-                    android:background="@drawable/bg_rounded_image"
                     android:src="@drawable/kitchen"
+                    android:background="@drawable/bg_rounded_image"
                     android:clipToOutline="true"
-                    android:tag="kitchen"/>
+                    android:contentDescription="Kitchen"
+                    android:tag="kitchen" />
             </FrameLayout>
 
-            <!-- картка 3 -->
+            <!-- Home office -->
             <FrameLayout
                 android:id="@+id/container3"
                 android:layout_width="0dp"
-                android:layout_height="140dp"
+                android:layout_height="100dp"
                 android:layout_columnWeight="1"
+                android:layout_rowWeight="1"
                 android:layout_gravity="fill"
-                android:background="@drawable/bg_image_selector"
-                android:foreground="?attr/selectableItemBackgroundBorderless"
-                android:padding="4dp">
+                android:background="@drawable/bg_image_selector">
+
                 <ImageView
                     android:id="@+id/img3"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:scaleType="centerCrop"
+                    android:src="@drawable/homeoffice"
                     android:background="@drawable/bg_rounded_image"
-                    android:src="@drawable/living_room"
                     android:clipToOutline="true"
-                    android:tag="living_room"/>
+                    android:contentDescription="Home Office"
+                    android:tag="homeoffice" />
             </FrameLayout>
 
-            <!-- картка 4 -->
+            <!-- Bathroom -->
             <FrameLayout
                 android:id="@+id/container4"
                 android:layout_width="0dp"
-                android:layout_height="140dp"
+                android:layout_height="100dp"
                 android:layout_columnWeight="1"
+                android:layout_rowWeight="1"
                 android:layout_gravity="fill"
-                android:background="@drawable/bg_image_selector"
-                android:foreground="?attr/selectableItemBackgroundBorderless"
-                android:padding="4dp">
+                android:background="@drawable/bg_image_selector">
+
                 <ImageView
                     android:id="@+id/img4"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:scaleType="centerCrop"
+                    android:src="@drawable/bathroom"
                     android:background="@drawable/bg_rounded_image"
-                    android:src="@drawable/living_room_2"
                     android:clipToOutline="true"
-                    android:tag="living_room_2"/>
+                    android:contentDescription="Bathroom"
+                    android:tag="bathroom" />
             </FrameLayout>
 
+            <!-- Bedroom -->
+            <FrameLayout
+                android:id="@+id/container5"
+                android:layout_width="0dp"
+                android:layout_height="100dp"
+                android:layout_columnWeight="1"
+                android:layout_rowWeight="1"
+                android:layout_gravity="fill"
+                android:background="@drawable/bg_image_selector">
+
+                <ImageView
+                    android:id="@+id/img5"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="centerCrop"
+                    android:src="@drawable/bedroom"
+                    android:background="@drawable/bg_rounded_image"
+                    android:clipToOutline="true"
+                    android:contentDescription="Bedroom"
+                    android:tag="bedroom" />
+            </FrameLayout>
+
+            <!-- Extra (балкон / інше) -->
+            <FrameLayout
+                android:id="@+id/container6"
+                android:layout_width="0dp"
+                android:layout_height="100dp"
+                android:layout_columnWeight="1"
+                android:layout_rowWeight="1"
+                android:layout_gravity="fill"
+                android:background="@drawable/bg_image_selector">
+
+                <ImageView
+                    android:id="@+id/img6"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="centerCrop"
+                    android:src="@drawable/balkon"
+                    android:background="@drawable/bg_rounded_image"
+                    android:clipToOutline="true"
+                    android:contentDescription="Extra"
+                    android:tag="extra" />
+            </FrameLayout>
         </GridLayout>
     </LinearLayout>
 </ScrollView>

@@ -6,6 +6,7 @@
     android:layout_height="match_parent"
     android:background="@color/background_color">
 
+    <!-- 🔹 Toolbar -->
     <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/toolbar"
         android:layout_width="0dp"
@@ -14,12 +15,22 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-
         app:navigationIcon="@drawable/baseline_arrow_back_24"
-        app:navigationIconTint="@color/weather_card_text"
-        app:titleCentered="true"
-        app:titleTextColor="@color/weather_card_text"/>
+        app:navigationIconTint="@color/weather_card_text">
 
+        <!-- 🔹 Тепер заголовок окремим TextView -->
+        <TextView
+            android:id="@+id/toolbar_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:text="Назва кімнати"
+            android:textColor="@color/weather_card_text"
+            android:textSize="18sp"
+            android:textStyle="bold"/>
+    </com.google.android.material.appbar.MaterialToolbar>
+
+    <!-- 🔹 Прогресбар -->
     <ProgressBar
         android:id="@+id/progress"
         style="?android:attr/progressBarStyleLarge"
@@ -30,89 +41,81 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <ScrollView
+    <!-- 🔹 SwipeRefreshLayout -->
+    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+        android:id="@+id/swipeRefreshSensor"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:fillViewport="true"
         app:layout_constraintTop_toBottomOf="@id/toolbar"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <LinearLayout
-            android:id="@+id/content"
+        <ScrollView
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="16dp">
+            android:layout_height="match_parent"
+            android:fillViewport="true">
 
-            <!-- по одному TextView на показник -->
-            <TextView
-                android:id="@+id/tvTemp"
-                style="@style/SensorPill"
-                android:text="🌡 Температура: …"/>
-            <TextView
-                android:id="@+id/tvHumi"
-                style="@style/SensorPill"
-                android:text="💧 Вологість: …"/>
-            <TextView
-                android:id="@+id/tvPressure"
-                style="@style/SensorPill"
-                android:text="🧭 Тиск: …"/>
-            <TextView
-                android:id="@+id/tvAltitude"
-                style="@style/SensorPill"
-                android:text="⛰ Висота: …"/>
-            <TextView
-                android:id="@+id/tvTempBme"
-                style="@style/SensorPill"
-                android:text="🌡 T(BME): …"/>
-            <TextView
-                android:id="@+id/tvHumiBme"
-                style="@style/SensorPill"
-                android:text="💧 H(BME): …"/>
-            <TextView
-                android:id="@+id/tvGas"
-                style="@style/SensorPill"
-                android:text="🔥 Газ: …" />
-            <TextView
-                android:id="@+id/tvLight"
-                style="@style/SensorPill"
-                android:text="💡 Світло: …"/>
-            <TextView
-                android:id="@+id/tvMq2"
-                style="@style/SensorPill"
-                android:text="🧪 MQ2: …"/>
-            <TextView
-                android:id="@+id/tvMq2P"
-                style="@style/SensorPill"
-                android:text="🧪 MQ2, %: …"/>
-            <TextView
-                android:id="@+id/tvLightA"
-                style="@style/SensorPill"
-                android:text="🔆 Освітленість (A): …"/>
-            <TextView
-                android:id="@+id/tvLightAP"
-                style="@style/SensorPill"
-                android:text="🔆 Освітленість, %: …"/>
-            <View
+            <LinearLayout
+                android:id="@+id/content"
                 android:layout_width="match_parent"
-                android:layout_height="8dp"
-                android:layout_marginTop="8dp"
-                android:background="@android:color/transparent" />
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
 
-            <TextView
-                android:id="@+id/tvAdviceTitle"
-                style="@style/SensorPill"
-                android:text="🧠 Рекомендації"
-                android:textStyle="bold" />
+                <!-- 🔹 Основні -->
+                <TextView android:id="@+id/tvTemp"     style="@style/SensorPill" android:text="🌡 Температура: …"/>
+                <TextView android:id="@+id/tvHumi"     style="@style/SensorPill" android:text="💧 Вологість: …"/>
+                <TextView android:id="@+id/tvPressure" style="@style/SensorPill" android:text="🧭 Тиск: …"/>
+                <TextView android:id="@+id/tvAltitude" style="@style/SensorPill" android:text="⛰ Висота: …"/>
+                <TextView android:id="@+id/tvTempBme"  style="@style/SensorPill" android:text="🌡 T(BME): …"/>
+                <TextView android:id="@+id/tvHumiBme"  style="@style/SensorPill" android:text="💧 H(BME): …"/>
 
-            <TextView
-                android:id="@+id/tvAdvice"
-                style="@style/SensorPill"
-                android:text="—"
-                android:maxLines="6"
-                android:ellipsize="end" />
-        </LinearLayout>
-    </ScrollView>
+                <!-- 🔹 Газ -->
+                <!-- Газ -->
+                <TextView
+                    android:id="@+id/tvGas"
+                    style="@style/SensorPill"
+                    android:text="🔥 Газ (детект): …" />
+
+                <TextView
+                    android:id="@+id/tvGasAnalog"
+                    style="@style/SensorPill"
+                    android:text="🔥 Газ (аналог, %): …" />
+
+                <!-- Світло -->
+                <TextView
+                    android:id="@+id/tvLight"
+                    style="@style/SensorPill"
+                    android:text="💡 Світло (детект): …" />
+
+                <TextView
+                    android:id="@+id/tvLightAnalog"
+                    style="@style/SensorPill"
+                    android:text="💡 Світло (аналог, %): …" />
+
+                <!-- 🔹 Divider -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="8dp"
+                    android:layout_marginTop="8dp"
+                    android:background="@android:color/transparent" />
+
+                <!-- 🔹 Рекомендації -->
+                <TextView
+                    android:id="@+id/tvAdviceTitle"
+                    style="@style/SensorPill"
+                    android:text="🧠 Рекомендації"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvAdvice"
+                    style="@style/SensorPill"
+                    android:text="—"
+                    android:maxLines="6"
+                    android:ellipsize="end" />
+
+            </LinearLayout>
+        </ScrollView>
+    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>

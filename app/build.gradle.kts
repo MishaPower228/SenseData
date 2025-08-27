@@ -8,7 +8,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.sensedata"
-        minSdk = 26
+        minSdk = 28
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
@@ -49,4 +49,5 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:5.1.0")
     implementation("com.squareup.okhttp3:logging-interceptor:5.1.0")
     implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
+    implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
 }

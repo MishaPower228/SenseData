@@ -156,16 +156,16 @@ public class RoomAdapter extends ListAdapter<RoomWithSensorDto, RoomAdapter.Room
         }
 
         private int getImageResId(String imageName) {
-            if (imageName == null) return R.drawable.living_room;
+            if (imageName == null) return R.drawable.livingroom;
             switch (imageName) {
                 case "kitchen":        return R.drawable.kitchen;
-                case "living_room":    return R.drawable.living_room;
-                case "living_room_2":  return R.drawable.living_room_2;
-                case "livingroom":     return R.drawable.livingroom;
-                //case "bedroom":        return R.drawable.bedroom;       // опційно, якщо маєте
-                //case "bathroom":       return R.drawable.bathroom;      // опційно
+                case "livingroom":    return R.drawable.livingroom;
+                case "bathroom":  return R.drawable.bathroom;
+                case "balkon":     return R.drawable.balkon;
+                case "bedroom":        return R.drawable.bedroom;
+                case "homeoffice":       return R.drawable.homeoffice;
                 //case "kids_room":      return R.drawable.kids_room;     // опційно
-                default:               return R.drawable.living_room;
+                default:               return R.drawable.livingroom;
             }
         }
     }

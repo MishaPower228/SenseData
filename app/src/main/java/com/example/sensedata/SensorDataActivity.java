@@ -12,16 +12,19 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
-import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.ListView;
+import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.example.sensedata.adapter.RecommendationHistoryAdapter;
 import com.example.sensedata.model.RecommendationHistoryDto;
@@ -33,7 +36,6 @@ import com.example.sensedata.network.SensorDataApiService;
 import com.example.sensedata.network.SettingsApiService;
 import com.google.android.material.appbar.MaterialToolbar;
 
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -54,11 +56,12 @@ public class SensorDataActivity extends ImmersiveActivity {
 
     private ProgressBar progress;
     private MaterialToolbar tb;
+    private SwipeRefreshLayout swipeRefresh;
 
     // Показники
     private TextView tvTemp, tvHumi, tvPressure, tvAltitude,
-            tvTempBme, tvHumiBme, tvGas, tvLight,
-            tvMq2, tvMq2P, tvLightA, tvLightAP;
+            tvTempBme, tvHumiBme, tvGas, tvGasAnalog,
+            tvLight, tvLightAnalog;
 
     // Поради
     private TextView tvAdvice;
@@ -81,16 +84,60 @@ public class SensorDataActivity extends ImmersiveActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_sensor_data);
 
+        getWindow().getAttributes().layoutInDisplayCutoutMode =
+                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+
+        View root = findViewById(android.R.id.content);
+        ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
+            Insets cutoutInsets = insets.getInsets(WindowInsetsCompat.Type.displayCutout());
+
+            MaterialToolbar toolbar = findViewById(R.id.toolbar);
+            if (toolbar != null) {
+                // 👇 додаємо відступ до всього тулбара
+                toolbar.setPadding(
+                        toolbar.getPaddingLeft(),
+                        cutoutInsets.top,
+                        toolbar.getPaddingRight(),
+                        toolbar.getPaddingBottom()
+                );
+                // 👇 плюс збільшуємо висоту тулбара,
+                // щоб hit-area стрілки піднялась разом з padding
+                toolbar.getLayoutParams().height =
+                        toolbar.getLayoutParams().height + cutoutInsets.top;
+                toolbar.requestLayout();
+            }
+
+            return insets;
+        });
+
         chipId   = getIntent().getStringExtra(EXTRA_CHIP_ID);
         roomName = getIntent().getStringExtra(EXTRA_ROOM_NAME);
 
         // --- Toolbar ---
         tb = findViewById(R.id.toolbar);
         tb.setNavigationOnClickListener(v -> getOnBackPressedDispatcher().onBackPressed());
-        tb.setTitle(makeTitle(roomName, chipId));
+
+        TextView toolbarTitle = findViewById(R.id.toolbar_title);
+        toolbarTitle.setText(makeTitle(roomName, chipId));
         // --- /Toolbar ---
 
         progress = findViewById(R.id.progress);
+        swipeRefresh = findViewById(R.id.swipeRefreshSensor);
+
+        // 🎨 Кольори індикатора
+        swipeRefresh.setColorSchemeColors(
+                getColor(R.color.main_color)
+        );
+        swipeRefresh.setProgressBackgroundColorSchemeColor(
+                getColor(R.color.bg_weather_card)
+        );
+
+        // 🔄 Свайп для оновлення
+        swipeRefresh.setOnRefreshListener(() -> {
+            loadLatest(false);
+            loadRecommendations(false);
+            swipeRefresh.postDelayed(() -> swipeRefresh.setRefreshing(false), 1000);
+        });
 
         // init views
         tvTemp     = findViewById(R.id.tvTemp);
@@ -100,13 +147,10 @@ public class SensorDataActivity extends ImmersiveActivity {
         tvTempBme  = findViewById(R.id.tvTempBme);
         tvHumiBme  = findViewById(R.id.tvHumiBme);
         tvGas      = findViewById(R.id.tvGas);
+        tvGasAnalog= findViewById(R.id.tvGasAnalog);
         tvLight    = findViewById(R.id.tvLight);
-        tvMq2      = findViewById(R.id.tvMq2);
-        tvMq2P     = findViewById(R.id.tvMq2P);
-        tvLightA   = findViewById(R.id.tvLightA);
-        tvLightAP  = findViewById(R.id.tvLightAP);
+        tvLightAnalog = findViewById(R.id.tvLightAnalog);
 
-        // поради (має бути додано у layout нижче списку показників)
         tvAdvice   = findViewById(R.id.tvAdvice);
 
         // retrofit API для порад
@@ -124,6 +168,7 @@ public class SensorDataActivity extends ImmersiveActivity {
         loadLatest(true);
     }
 
+
     @Override
     protected void onStart() {
         super.onStart();
@@ -137,8 +182,6 @@ public class SensorDataActivity extends ImmersiveActivity {
         handler.removeCallbacks(refreshRunnable);
     }
 
-    private void loadLatest() { loadLatest(true); }
-
     private void loadLatest(boolean showProgress) {
         if (isLoading) return;
         isLoading = true;
@@ -150,7 +193,8 @@ public class SensorDataActivity extends ImmersiveActivity {
                 .create(SensorDataApiService.class);
 
         api.getLatest(chipId).enqueue(new Callback<SensorDataDTO>() {
-            @Override public void onResponse(Call<SensorDataDTO> call, Response<SensorDataDTO> resp) {
+            @Override
+            public void onResponse(Call<SensorDataDTO> call, Response<SensorDataDTO> resp) {
                 isLoading = false;
                 progress.setVisibility(View.GONE);
 
@@ -158,37 +202,45 @@ public class SensorDataActivity extends ImmersiveActivity {
                     if (showProgress) {
                         Toast.makeText(SensorDataActivity.this, "Немає даних", Toast.LENGTH_SHORT).show();
                     }
-                    // навіть якщо даних немає — підвантажимо поради, вони рахуються окремо
                     loadRecommendations(false);
                     return;
                 }
+
                 SensorDataDTO d = resp.body();
 
-                // оновлюємо заголовок, якщо з бекенда приїхав roomName
+                // Якщо з беку приїхало ім'я кімнати — оновлюємо
                 if ((roomName == null || roomName.isEmpty()) && d.roomName != null && !d.roomName.isEmpty()) {
                     roomName = d.roomName;
                 }
-                tb.setTitle(makeTitle(roomName, chipId));
 
-                // показники
+                // 🔹 Встановлюємо заголовок у TextView тулбара
+                TextView toolbarTitle = findViewById(R.id.toolbar_title);
+                if (toolbarTitle != null) {
+                    toolbarTitle.setText(makeTitle(roomName, chipId));
+                }
+
+                // 🔹 Основні показники
                 tvTemp.setText("🌡 Температура: " + f(d.temperatureDht, "°C"));
                 tvHumi.setText("💧 Вологість: " + f(d.humidityDht, "%"));
                 tvPressure.setText("🧭 Тиск: " + f(d.pressure, "hPa"));
                 tvAltitude.setText("⛰ Висота: " + f(d.altitude, "m"));
                 tvTempBme.setText("🌡 T(BME): " + f(d.temperatureBme, "°C"));
                 tvHumiBme.setText("💧 H(BME): " + f(d.humidityBme, "%"));
-                tvGas.setText("🔥 Газ: " + b(d.gasDetected));
-                tvLight.setText("💡 Світло: " + b(d.light));
-                tvMq2.setText("🧪 MQ2: " + i(d.mq2Analog));
-                tvMq2P.setText("🧪 MQ2, %: " + f(d.mq2AnalogPercent, "%"));
-                tvLightA.setText("🔆 Освітленість (A): " + i(d.lightAnalog));
-                tvLightAP.setText("🔆 Освітленість, %: " + f(d.lightAnalogPercent, "%"));
 
-                // поради (і одразу збережемо у історію, якщо вони є)
+                // 🔹 Газ
+                tvGas.setText("🔥 Газ: " + b(d.gasDetected));
+                tvGasAnalog.setText("🔥 Газ: " + i(d.mq2Analog) + ", " + f(d.mq2AnalogPercent, "%"));
+
+                // 🔹 Світло
+                tvLight.setText("💡 Світло: " + b(d.light));
+                tvLightAnalog.setText("💡 Світло: " + i(d.lightAnalog) + ", " + f(d.lightAnalogPercent, "%"));
+
+                // 🔹 Поради
                 loadRecommendations(true);
             }
 
-            @Override public void onFailure(Call<SensorDataDTO> call, Throwable t) {
+            @Override
+            public void onFailure(Call<SensorDataDTO> call, Throwable t) {
                 isLoading = false;
                 progress.setVisibility(View.GONE);
                 if (showProgress) {
@@ -198,6 +250,7 @@ public class SensorDataActivity extends ImmersiveActivity {
             }
         });
     }
+
 
     // ----------- ПОРАДИ -----------
 
@@ -220,16 +273,14 @@ public class SensorDataActivity extends ImmersiveActivity {
                 tvAdvice.setText("• " + TextUtils.join("\n• ", adv));
 
                 if (saveIfAny) {
-                    // 204 No Content означає: нічого не збережено (порад немає) — це ок
                     settingsApi.saveLatestAdvice(chipId).enqueue(new Callback<SaveLatestRecommendationDto>() {
-                        @Override public void onResponse(Call<SaveLatestRecommendationDto> c2, Response<SaveLatestRecommendationDto> r2) { /* no-op */ }
-                        @Override public void onFailure(Call<SaveLatestRecommendationDto> c2, Throwable t) { /* no-op */ }
+                        @Override public void onResponse(Call<SaveLatestRecommendationDto> c2, Response<SaveLatestRecommendationDto> r2) { }
+                        @Override public void onFailure(Call<SaveLatestRecommendationDto> c2, Throwable t) { }
                     });
                 }
             }
             @Override public void onFailure(Call<RecommendationsDto> c, Throwable t) {
                 adviceLoading = false;
-                // тихо ігноруємо
             }
         });
     }
@@ -239,7 +290,6 @@ public class SensorDataActivity extends ImmersiveActivity {
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
         dialog.setContentView(R.layout.dialog_recommendations_history);
 
-        // повністю прибрати будь-яке затемнення/бекграунд системного вікна
         if (dialog.getWindow() != null) {
             Window w = dialog.getWindow();
             w.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
@@ -247,28 +297,22 @@ public class SensorDataActivity extends ImmersiveActivity {
             w.setDimAmount(0f);
         }
 
-        // view з лейаута
         RecyclerView rv = dialog.findViewById(R.id.rvAdviceHistory);
         TextView tvEmpty = dialog.findViewById(R.id.tvEmpty);
         Button btnClose = dialog.findViewById(R.id.btnClose);
 
-        // список
         rv.setLayoutManager(new LinearLayoutManager(this));
         RecommendationHistoryAdapter adapter = new RecommendationHistoryAdapter();
         rv.setAdapter(adapter);
 
-        // кнопка "Закрити"
         btnClose.setOnClickListener(v -> dialog.dismiss());
-
         dialog.show();
 
-        // задати ширину ~90% екрана (щоб не було вузької колонки)
         if (dialog.getWindow() != null) {
             int width = (int) (getResources().getDisplayMetrics().widthPixels * 0.90f);
             dialog.getWindow().setLayout(width, ViewGroup.LayoutParams.WRAP_CONTENT);
         }
 
-        // завантаження історії
         settingsApi.getAdviceHistory(chipId, 30).enqueue(new Callback<List<RecommendationHistoryDto>>() {
             @Override
             public void onResponse(Call<List<RecommendationHistoryDto>> call,
