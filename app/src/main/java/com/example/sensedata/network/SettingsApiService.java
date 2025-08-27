@@ -4,6 +4,7 @@ import java.util.List;
 
 import okhttp3.ResponseBody;
 import retrofit2.Call;
+import retrofit2.http.Body;
 import retrofit2.http.GET;
 import retrofit2.http.POST;
 import retrofit2.http.Path;
@@ -12,6 +13,8 @@ import retrofit2.http.Query;
 import com.example.sensedata.model.RecommendationsDto;
 import com.example.sensedata.model.RecommendationHistoryDto;
 import com.example.sensedata.model.SaveLatestRecommendationDto;
+import com.example.sensedata.model.AdjustmentAbsoluteRequestDto;
+import com.example.sensedata.model.AdjustmentAbsoluteResponseDto;
 
 public interface SettingsApiService {
 
@@ -29,5 +32,9 @@ public interface SettingsApiService {
             @Path("chipId") String chipId,
             @Query("take") int take
     );
+
+    // POST /api/settings/adjustments
+    @POST("settings/adjustments")
+    Call<AdjustmentAbsoluteResponseDto> postAdjustments(@Body AdjustmentAbsoluteRequestDto body);
 }
 

@@ -134,6 +134,24 @@ public class MainActivity extends ImmersiveActivity {
 
         requestAllPermissions();
 
+        // --- Діалог порогів після реєстрації (варіант A) ---
+        SharedPreferences sp = getSharedPreferences("user_prefs", MODE_PRIVATE);
+        boolean pending = sp.getBoolean("pending_threshold_dialog", false);
+
+        if (savedInstanceState == null
+                && pending
+                && !ThresholdPrefs.isSet(this)
+                && getSupportFragmentManager().findFragmentByTag(ThresholdDialogFragment.TAG) == null) {
+
+            getWindow().getDecorView().post(() -> {
+                new ThresholdDialogFragment()
+                        .show(getSupportFragmentManager(), ThresholdDialogFragment.TAG);
+            });
+
+            // скидаємо прапорець, щоб діалог більше не з’являвся
+            sp.edit().remove("pending_threshold_dialog").apply();
+        }
+
         // SwipeRefreshLayout
         SwipeRefreshLayout swipeRefresh = findViewById(R.id.swipeRefresh);
         swipeRefresh.setColorSchemeColors(

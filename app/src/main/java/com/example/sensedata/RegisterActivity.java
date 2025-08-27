@@ -17,8 +17,6 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.appcompat.app.AppCompatActivity;
-
 import com.example.sensedata.model.LoginRequest;
 import com.example.sensedata.model.RegisterRequest;
 import com.example.sensedata.model.UserResponse;
@@ -41,51 +39,40 @@ public class RegisterActivity extends ImmersiveActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Якщо користувач уже залогінений — в головний екран
+        // Якщо вже залогінений → одразу в MainActivity
         SharedPreferences prefs = getSharedPreferences("MyAppPrefs", MODE_PRIVATE);
-        String accessToken = prefs.getString("accessToken", null);
-        String username    = prefs.getString("username", null);
-        if (accessToken != null && username != null) {
-            startActivity(new Intent(RegisterActivity.this, MainActivity.class));
+        String token = prefs.getString("accessToken", null);
+        String username = prefs.getString("username", null);
+        if (token != null && username != null) {
+            startActivity(new Intent(this, MainActivity.class));
             finish();
             return;
         }
 
         setContentView(R.layout.activity_register);
 
-        // Клавіатура "підштовхує" контент
+        // Клавіатура підштовхує контент
         getWindow().setSoftInputMode(
                 WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
                         | WindowManager.LayoutParams.SOFT_INPUT_STATE_HIDDEN
         );
 
-        // Підкладаємо IMEInsets у корінь (NestedScrollView або інший контейнер)
-        View root = findViewById(R.id.register_root);
-        if (root == null) root = findViewById(android.R.id.content);
-        applyImePadding(root);
-        if (!(root instanceof androidx.core.widget.NestedScrollView)) {
-            // Якщо корінь не скролиться – піднімаємо кнопку над клавіатурою
-            View btn = findViewById(R.id.buttonRegister);
-            if (btn != null) applyImeMargin(btn);
-        }
-
-        // Ініціалізація вьюх
-        usernameEditText        = findViewById(R.id.editTextUsername);
-        emailEditText           = findViewById(R.id.editTextEmail);
-        passwordEditText        = findViewById(R.id.editTextPassword);
+        // Ініціалізація в’юх
+        usernameEditText = findViewById(R.id.editTextUsername);
+        emailEditText = findViewById(R.id.editTextEmail);
+        passwordEditText = findViewById(R.id.editTextPassword);
         confirmPasswordEditText = findViewById(R.id.editTextConfirmPassword);
-        showPasswordCheckBox    = findViewById(R.id.checkboxShowPassword);
-        registerButton          = findViewById(R.id.buttonRegister);
-        loginLink               = findViewById(R.id.textLoginLink);
-        registerCard            = findViewById(R.id.registerCard);
+        showPasswordCheckBox = findViewById(R.id.checkboxShowPassword);
+        registerButton = findViewById(R.id.buttonRegister);
+        loginLink = findViewById(R.id.textLoginLink);
+        registerCard = findViewById(R.id.registerCard);
 
         loginLink.setOnClickListener(v -> {
-            startActivity(new Intent(RegisterActivity.this, LoginActivity.class));
+            startActivity(new Intent(this, LoginActivity.class));
             finish();
         });
 
-        // Показ/приховування пароля (без зміни inputType)
-        showPasswordCheckBox.setOnCheckedChangeListener((buttonView, isChecked) -> {
+        showPasswordCheckBox.setOnCheckedChangeListener((btn, isChecked) -> {
             if (isChecked) {
                 passwordEditText.setTransformationMethod(android.text.method.HideReturnsTransformationMethod.getInstance());
                 confirmPasswordEditText.setTransformationMethod(android.text.method.HideReturnsTransformationMethod.getInstance());
@@ -98,24 +85,22 @@ public class RegisterActivity extends ImmersiveActivity {
         });
 
         registerButton.setOnClickListener(v -> {
-            String usernameInput   = usernameEditText.getText().toString().trim();
-            String email           = emailEditText.getText().toString().trim();
-            String password        = passwordEditText.getText().toString().trim();
+            String usernameInput = usernameEditText.getText().toString().trim();
+            String email = emailEditText.getText().toString().trim();
+            String password = passwordEditText.getText().toString().trim();
             String confirmPassword = confirmPasswordEditText.getText().toString().trim();
 
-            if (TextUtils.isEmpty(usernameInput) || TextUtils.isEmpty(email)
-                    || TextUtils.isEmpty(password) || TextUtils.isEmpty(confirmPassword)) {
+            if (TextUtils.isEmpty(usernameInput) || TextUtils.isEmpty(email) ||
+                    TextUtils.isEmpty(password) || TextUtils.isEmpty(confirmPassword)) {
                 animateError();
-                Toast.makeText(RegisterActivity.this, "Заповніть всі поля", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Заповніть всі поля", Toast.LENGTH_SHORT).show();
                 return;
             }
-
             if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-                emailEditText.setError("Невірний email формат");
+                emailEditText.setError("Невірний email");
                 animateError();
                 return;
             }
-
             if (!password.equals(confirmPassword)) {
                 confirmPasswordEditText.setError("Паролі не збігаються");
                 animateError();
@@ -126,42 +111,43 @@ public class RegisterActivity extends ImmersiveActivity {
         });
     }
 
-
     private void animateError() {
         Animation shake = AnimationUtils.loadAnimation(this, R.anim.shake);
         registerCard.startAnimation(shake);
     }
 
     private void registerUser(String username, String email, String password) {
-        RegisterRequest request = new RegisterRequest(username, email, password);
-        UserApiService api = ApiClientMain.getClient(RegisterActivity.this).create(UserApiService.class);
+        RegisterRequest req = new RegisterRequest(username, email, password);
+        UserApiService api = ApiClientMain.getClient(this).create(UserApiService.class);
 
-        api.register(request).enqueue(new Callback<UserResponse>() {
+        api.register(req).enqueue(new Callback<UserResponse>() {
             @Override
-            public void onResponse(Call<UserResponse> call, Response<UserResponse> response) {
-                if (response.code() == 201) {
-                    SharedPreferences prefs = getSharedPreferences("MyAppPrefs", MODE_PRIVATE);
-                    SharedPreferences.Editor editor = prefs.edit();
-                    editor.putString("username", username);
+            public void onResponse(Call<UserResponse> call, Response<UserResponse> resp) {
+                if (resp.isSuccessful() && resp.body() != null) {
+                    UserResponse body = resp.body();
 
-                    // 💡 Збереження userId, отриманого з відповіді
-                    int userId = response.body().getId(); // ← це твій userId з UserResponse
-                    editor.putInt("userId", userId);
+                    // прапорець для MainActivity → показати ThresholdDialog
+                    getSharedPreferences("user_prefs", MODE_PRIVATE)
+                            .edit().putBoolean("pending_threshold_dialog", true).apply();
 
-                    editor.apply();
-
-                    Toast.makeText(RegisterActivity.this, "Реєстрація успішна", Toast.LENGTH_SHORT).show();
-
-                    loginUser(username, password);
+                    boolean hasTokens = body.getAccessToken() != null && body.getRefreshToken() != null;
+                    if (hasTokens) {
+                        saveTokens(body);
+                        Toast.makeText(RegisterActivity.this, "Успішна реєстрація і вхід", Toast.LENGTH_SHORT).show();
+                        startActivity(new Intent(RegisterActivity.this, MainActivity.class));
+                        finish();
+                    } else {
+                        // немає токенів → робимо автоматичний логін
+                        loginUser(username, password);
+                    }
                 } else {
-                    Toast.makeText(RegisterActivity.this, "Помилка реєстрації", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(RegisterActivity.this, "Помилка реєстрації: " + resp.code(), Toast.LENGTH_SHORT).show();
                     animateError();
                 }
             }
-
             @Override
             public void onFailure(Call<UserResponse> call, Throwable t) {
-                Log.e("REGISTER_ERROR", "❌ Retrofit error: " + t.getMessage(), t);
+                Log.e("REGISTER_ERROR", "❌ " + t.getMessage(), t);
                 Toast.makeText(RegisterActivity.this, "Сервер недоступний", Toast.LENGTH_SHORT).show();
                 animateError();
             }
@@ -169,41 +155,37 @@ public class RegisterActivity extends ImmersiveActivity {
     }
 
     private void loginUser(String username, String password) {
-        LoginRequest loginRequest = new LoginRequest(username, password);
-        UserApiService api = ApiClientMain.getClient(RegisterActivity.this).create(UserApiService.class);
+        LoginRequest req = new LoginRequest(username, password);
+        UserApiService api = ApiClientMain.getClient(this).create(UserApiService.class);
 
-        api.login(loginRequest).enqueue(new Callback<UserResponse>() {
+        api.login(req).enqueue(new Callback<UserResponse>() {
             @Override
-            public void onResponse(Call<UserResponse> call, Response<UserResponse> response) {
-                if (response.isSuccessful() && response.body() != null) {
-
-                    // ⬇️ Тут зберігаємо все в SharedPreferences
-                    SharedPreferences prefs = getSharedPreferences("MyAppPrefs", MODE_PRIVATE);
-                    prefs.edit()
-                            .putInt("userId", response.body().getId())
-                            .putString("username", response.body().getUsername())
-                            .putString("accessToken", response.body().getAccessToken())
-                            .putString("refreshToken", response.body().getRefreshToken())
-                            .apply();
-
-                    Toast.makeText(RegisterActivity.this, "Успішна реєстрація і вхід", Toast.LENGTH_SHORT).show();
-
-                    // Переходимо на головну активність
+            public void onResponse(Call<UserResponse> call, Response<UserResponse> resp) {
+                if (resp.isSuccessful() && resp.body() != null) {
+                    saveTokens(resp.body());
+                    Toast.makeText(RegisterActivity.this, "Автоматичний вхід виконано", Toast.LENGTH_SHORT).show();
                     startActivity(new Intent(RegisterActivity.this, MainActivity.class));
                     finish();
-
                 } else {
-                    Toast.makeText(RegisterActivity.this, "Автоматичний вхід не вдався", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(RegisterActivity.this, "Помилка логіну: " + resp.code(), Toast.LENGTH_SHORT).show();
                     animateError();
                 }
             }
-
-
             @Override
             public void onFailure(Call<UserResponse> call, Throwable t) {
-                Toast.makeText(RegisterActivity.this, "Помилка при вході: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                Toast.makeText(RegisterActivity.this, "Помилка логіну: " + t.getMessage(), Toast.LENGTH_SHORT).show();
                 animateError();
             }
         });
+    }
+
+    private void saveTokens(UserResponse resp) {
+        SharedPreferences prefs = getSharedPreferences("MyAppPrefs", MODE_PRIVATE);
+        prefs.edit()
+                .putInt("userId", resp.getId())
+                .putString("username", resp.getUsername())
+                .putString("accessToken", resp.getAccessToken())
+                .putString("refreshToken", resp.getRefreshToken())
+                .apply();
     }
 }

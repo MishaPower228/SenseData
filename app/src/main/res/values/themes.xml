@@ -1,9 +1,64 @@
-<resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
-    <style name="Base.Theme.SenseData" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Головна тема застосунку -->
+    <style name="Theme.SenseData" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Edge-to-edge -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+
+        <!-- Бренд-кольори -->
+        <item name="colorPrimary">@color/main_color</item>
+        <item name="colorSurface">@color/bg_weather_card</item>
+        <item name="colorOnSurface">@color/weather_card_text</item>
+
+        <!-- Діалоги та повзунки -->
+        <item name="materialAlertDialogTheme">@style/Overlay.SenseData.AlertDialog</item>
+        <item name="sliderStyle">@style/Widget.SenseData.Slider</item>
     </style>
 
-    <style name="Theme.SenseData" parent="Base.Theme.SenseData" />
+    <!-- Overlay для всіх MaterialAlertDialog -->
+    <style name="Overlay.SenseData.AlertDialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+        <item name="android:windowBackground">@color/bg_weather_card</item>
+        <item name="backgroundTint">@color/bg_weather_card</item>
+        <item name="colorSurface">@color/bg_weather_card</item>
+        <item name="colorOnSurface">@color/weather_card_text</item>
+
+        <!-- важливо -->
+        <item name="backgroundInsetStart">0dp</item>
+        <item name="backgroundInsetEnd">0dp</item>
+        <item name="backgroundInsetTop">0dp</item>
+        <item name="backgroundInsetBottom">0dp</item>
+
+        <item name="shapeAppearanceMediumComponent">@style/Shape.SenseData</item>
+        <item name="buttonBarPositiveButtonStyle">@style/Widget.SenseData.Dialog.Filled</item>
+        <item name="buttonBarNegativeButtonStyle">@style/Widget.SenseData.Dialog.Filled</item>
+    </style>
+
+
+
+    <!-- Заповнена синя кнопка -->
+    <style name="Widget.SenseData.Dialog.Filled" parent="Widget.Material3.Button">
+        <item name="backgroundTint">@color/main_color</item>
+        <item name="android:textColor">@android:color/white</item>
+        <item name="android:minHeight">44dp</item>
+    </style>
+
+    <!-- Сині повзунки -->
+    <style name="Widget.SenseData.Slider" parent="Widget.Material3.Slider">
+        <item name="thumbColor">@color/main_color</item>
+        <item name="haloColor">@color/main_color</item>
+        <item name="trackColorActive">@color/main_color</item>
+        <item name="trackColorInactive">@color/main_color</item>
+        <item name="tickVisible">false</item>
+        <item name="trackHeight">6dp</item>
+        <item name="thumbRadius">12dp</item>
+    </style>
+
+    <!-- Форма -->
+    <style name="Shape.SenseData">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">20dp</item>
+    </style>
+
 </resources>

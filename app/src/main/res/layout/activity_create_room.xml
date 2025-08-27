@@ -6,7 +6,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     app:cardPreventCornerOverlap="true"
-    app:cardBackgroundColor="@color/bg_weather_card">
+    app:cardBackgroundColor="@color/background_toolbar_color">
 
         <!-- Скрол всередині картки, щоб нічого не «сплющувалося» -->
         <androidx.core.widget.NestedScrollView
@@ -304,7 +304,7 @@
                     style="@style/Widget.Material3.TextInputLayout.FilledBox.Dense"
                     app:endIconMode="dropdown_menu"
                     app:endIconTint="@color/weather_card_text"
-                    app:boxBackgroundColor="@color/bg_weather_card"
+                    app:boxBackgroundColor="@color/background_toolbar_color"
                     app:shapeAppearance="@style/Shape.Rounded16"
                     app:boxStrokeColor="@drawable/box_stroke_devices"
                     app:boxStrokeWidth="0dp"

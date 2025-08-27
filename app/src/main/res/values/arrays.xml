@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <array name="default_temp_values">
+        <item>20.0</item>
+        <item>24.0</item>
+    </array>
+    <array name="default_hum_values">
+        <item>40</item>
+        <item>60</item>
+    </array>
+</resources>

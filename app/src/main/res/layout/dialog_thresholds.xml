@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="20dp"
+    android:background="@color/bg_weather_card">
+
+    <!-- Заголовок -->
+    <TextView
+        android:id="@+id/titleText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Пороги комфорту"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:textColor="@color/weather_card_text"
+        android:gravity="center"
+        android:paddingBottom="12dp" />
+
+    <!-- Коротке пояснення -->
+    <TextView
+        android:id="@+id/subTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Встановіть діапазони для сповіщень і рекомендацій"
+        android:textSize="14sp"
+        android:textColor="@color/weather_card_text"
+        android:alpha="0.8"
+        android:paddingBottom="12dp" />
+
+    <!-- Температура: заголовок + поточне значення справа як бейдж -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingTop="6dp"
+        android:paddingBottom="4dp">
+
+        <TextView
+            android:id="@+id/labelTemp"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Температура (°C)"
+            android:textStyle="bold"
+            android:textColor="@color/weather_card_text" />
+
+        <TextView
+            android:id="@+id/valueTemp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_weather_label"
+            android:paddingLeft="10dp"
+            android:paddingRight="10dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp"
+            android:text="20.0 – 24.0 °C"
+            android:textColor="@color/weather_card_text"
+            android:textSize="14sp" />
+    </LinearLayout>
+
+    <com.google.android.material.slider.RangeSlider
+        android:id="@+id/sliderTemp"
+        style="@style/Widget.SenseData.Slider"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:valueFrom="-10"
+        android:valueTo="40"
+        android:stepSize="0.5"
+        app:values="@array/default_temp_values"
+        app:labelBehavior="withinBounds" />
+
+    <!-- Divider -->
+    <com.google.android.material.divider.MaterialDivider
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="12dp"
+        android:layout_marginBottom="12dp"
+        app:dividerColor="@color/main_color"
+        app:dividerThickness="1dp" />
+
+    <!-- Вологість: заголовок + поточне значення справа як бейдж -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingTop="6dp"
+        android:paddingBottom="4dp">
+
+        <TextView
+            android:id="@+id/labelHum"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Вологість (%)"
+            android:textStyle="bold"
+            android:textColor="@color/weather_card_text" />
+
+        <TextView
+            android:id="@+id/valueHum"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_weather_label"
+            android:paddingLeft="10dp"
+            android:paddingRight="10dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp"
+            android:text="40 – 60 %"
+            android:textColor="@color/weather_card_text"
+            android:textSize="14sp" />
+    </LinearLayout>
+
+    <com.google.android.material.slider.RangeSlider
+        android:id="@+id/sliderHum"
+        style="@style/Widget.SenseData.Slider"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:valueFrom="0"
+        android:valueTo="100"
+        android:stepSize="1"
+        app:values="@array/default_hum_values"
+        app:labelBehavior="withinBounds" />
+
+    <!-- Пояснення -->
+    <TextView
+        android:id="@+id/hint"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Ці пороги можна змінити пізніше в налаштуваннях"
+        android:textSize="12sp"
+        android:textColor="@color/weather_card_text"
+        android:alpha="0.7"
+        android:paddingTop="10dp" />
+
+    <!-- 👇 Наші кнопки замість стандартної панелі -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="end"
+        android:paddingTop="16dp">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnCancel"
+            style="@style/Widget.SenseData.Dialog.Filled"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp"
+            android:text="Скасувати" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSave"
+            style="@style/Widget.SenseData.Dialog.Filled"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:text="Зберегти" />
+    </LinearLayout>
+</LinearLayout>
