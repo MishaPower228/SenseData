@@ -56,6 +56,7 @@ import com.github.mikephil.charting.components.YAxis;
 import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
+import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
@@ -109,29 +110,25 @@ public class MainActivity extends ImmersiveActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
-        setContentView(R.layout.activity_main);
 
         getWindow().getAttributes().layoutInDisplayCutoutMode =
                 WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+        setContentView(R.layout.activity_main);
 
+        // 👇 Insets для cutout (чубчика)
         View root = findViewById(android.R.id.content);
         ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
             Insets cutoutInsets = insets.getInsets(WindowInsetsCompat.Type.displayCutout());
 
-            androidx.appcompat.widget.Toolbar toolbar = findViewById(R.id.custom_toolbar);
-            if (toolbar == null) {
-                toolbar = findViewById(R.id.toolbar);
-            }
-
+            Toolbar toolbar = findViewById(R.id.custom_toolbar);
             if (toolbar != null) {
                 toolbar.setPadding(
                         toolbar.getPaddingLeft(),
-                        cutoutInsets.top, // 👈 тут враховується камера
+                        cutoutInsets.top,   // відступ під notch
                         toolbar.getPaddingRight(),
                         toolbar.getPaddingBottom()
                 );
             }
-
             return insets;
         });
 
@@ -139,41 +136,29 @@ public class MainActivity extends ImmersiveActivity {
 
         // SwipeRefreshLayout
         SwipeRefreshLayout swipeRefresh = findViewById(R.id.swipeRefresh);
-
-        // 🎨 Кольори індикатора
         swipeRefresh.setColorSchemeColors(
-                ContextCompat.getColor(this, R.color.main_color) // твій основний акцент
+                ContextCompat.getColor(this, R.color.main_color)
         );
         swipeRefresh.setProgressBackgroundColorSchemeColor(
-                ContextCompat.getColor(this, R.color.bg_weather_card) // фон кружечка
+                ContextCompat.getColor(this, R.color.bg_weather_card)
         );
-
-        // 🔄 Логіка оновлення
         swipeRefresh.setOnRefreshListener(() -> {
-            // перезапускаємо погоду
             weatherManager.startWeatherUpdates();
-
-            // підвантажуємо кімнати
             loadRoomsFromServer();
-
-            // оновлюємо графік
             updateChartForSelection();
-
-            // зупинка індикатора через 1 сек.
             swipeRefresh.postDelayed(() -> swipeRefresh.setRefreshing(false), 1000);
         });
 
-
-        // Toolbar
+        // --- Toolbar ---
         Toolbar toolbar = findViewById(R.id.custom_toolbar);
         setSupportActionBar(toolbar);
         getSupportActionBar().setDisplayShowTitleEnabled(false);
-        TextView title = toolbar.findViewById(R.id.toolbar_title);
 
-        // Привітання
+        TextView title = toolbar.findViewById(R.id.toolbar_title);
         String cached = getSavedUsername();
         setHello(title, (cached != null) ? cached : getString(R.string.guest));
         refreshUsernameFromServer(title);
+        // --- /Toolbar ---
 
         // Підписи секцій
         TextView labelWeather = findViewById(R.id.labelWeather);
@@ -250,8 +235,6 @@ public class MainActivity extends ImmersiveActivity {
         loadRoomsFromServer();
         startPeriodicRoomRefresh();
     }
-
-
     private void setupRoomsRecycler() {
         roomRecyclerView = findViewById(R.id.room_recycler_view);
         LinearLayoutManager lm = new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false);

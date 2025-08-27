@@ -4,4 +4,5 @@
     <string name="add_room">Додати кімнату</string>
     <string name="hello_username">Привіт, %1$s</string>
     <string name="guest">гість</string>
+    <string name="user_profile">фото</string>
 </resources>

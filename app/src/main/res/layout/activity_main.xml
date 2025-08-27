@@ -9,12 +9,15 @@
     tools:context=".MainActivity">
 
     <!-- 🔹 Фіксований тулбар зверху -->
-    <androidx.appcompat.widget.Toolbar
+    <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/custom_toolbar"
         android:layout_width="0dp"
         android:layout_height="?attr/actionBarSize"
         android:background="@drawable/rounded_toolbar"
-        android:layout_marginBottom="4dp"
+        android:paddingTop="4dp"
+        android:fitsSystemWindows="true"
+        app:titleTextColor="@color/weather_card_text"
+        app:titleCentered="true"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
@@ -44,7 +47,7 @@
                 android:src="@drawable/ic_user"
                 android:contentDescription="User icon" />
         </RelativeLayout>
-    </androidx.appcompat.widget.Toolbar>
+    </com.google.android.material.appbar.MaterialToolbar>
 
     <!-- 🔹 Pull-to-Refresh для всього прокручуваного контенту під тулбаром -->
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
