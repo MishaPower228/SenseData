@@ -42,7 +42,9 @@ import com.example.sensedata.network.SensorDataApiService;
 import com.example.sensedata.network.UserApiService;
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.components.AxisBase;
+import com.github.mikephil.charting.components.LimitLine;
 import com.github.mikephil.charting.components.XAxis;
+import com.github.mikephil.charting.components.YAxis;
 import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
@@ -578,6 +580,12 @@ public class MainActivity extends ImmersiveActivity {
     private void setChartDataFromApi(List<SensorPointDto> points, boolean isDay) {
         int txtColor = ContextCompat.getColor(this, R.color.weather_card_text);
 
+        if (points == null || points.isEmpty()) {
+            chart.clear();
+            chart.invalidate();
+            return;
+        }
+
         List<Entry> temp = new ArrayList<>();
         List<Entry> hum  = new ArrayList<>();
         List<String> labels = new ArrayList<>();
@@ -595,14 +603,15 @@ public class MainActivity extends ImmersiveActivity {
             labels.add(isDay ? local.toLocalTime().format(hhmm) : local.toLocalDate().format(ddMM));
         }
 
+        // --- DataSet
         LineDataSet dataSet;
-        if (showTemperature) { // 👈 перемикач
+        final boolean isTemp = showTemperature;
+        if (isTemp) {
             dataSet = new LineDataSet(temp, "Температура °C");
             dataSet.setColor(Color.RED);
             dataSet.setCircleColor(Color.RED);
             dataSet.setValueFormatter(new com.github.mikephil.charting.formatter.ValueFormatter() {
-                @Override
-                public String getFormattedValue(float value) {
+                @Override public String getFormattedValue(float value) {
                     return String.format(Locale.getDefault(), "%.0f°", value);
                 }
             });
@@ -610,25 +619,78 @@ public class MainActivity extends ImmersiveActivity {
             dataSet = new LineDataSet(hum, "Вологість %");
             dataSet.setColor(Color.BLUE);
             dataSet.setCircleColor(Color.BLUE);
+            dataSet.setValueFormatter(new com.github.mikephil.charting.formatter.ValueFormatter() {
+                @Override public String getFormattedValue(float value) {
+                    return String.format(Locale.getDefault(), "%.0f%%", value); // 👈 тільки ціле число
+                }
+            });
         }
-
         dataSet.setDrawValues(true);
         dataSet.setValueTextColor(txtColor);
         dataSet.setValueTextSize(10f);
 
-        chart.getXAxis().setGranularity(1f);
-        chart.getXAxis().setLabelCount(Math.min(6, labels.size()), true);
-        chart.getXAxis().setValueFormatter(new com.github.mikephil.charting.formatter.ValueFormatter() {
+        // --- X-вісь
+        XAxis x = chart.getXAxis();
+        x.setGranularity(1f);
+        x.setLabelCount(Math.min(6, labels.size()), true);
+        x.setTextColor(txtColor);
+        x.setValueFormatter(new com.github.mikephil.charting.formatter.ValueFormatter() {
             @Override public String getAxisLabel(float value, AxisBase axis) {
                 int i = (int) value;
                 return (i >= 0 && i < labels.size()) ? labels.get(i) : "";
             }
         });
 
-        chart.setExtraTopOffset(12f);
-        chart.setData(new LineData(dataSet)); // 👈 тільки один ряд
+        // --- Y-вісь
+        YAxis left = chart.getAxisLeft();
+        chart.getAxisRight().setEnabled(false);
+        left.setTextColor(txtColor);
+        left.setAxisLineColor(txtColor);
+        left.setXOffset(12f); // 👈 цифри Y-осі відсунуті лівіше
+
+        // межі по даним
+        List<Entry> series = isTemp ? temp : hum;
+        float dataMin = Float.MAX_VALUE, dataMax = -Float.MAX_VALUE;
+        for (Entry e : series) {
+            float y = e.getY();
+            if (y < dataMin) dataMin = y;
+            if (y > dataMax) dataMax = y;
+        }
+        float lowerLimit = dataMin - 5f;
+        float upperLimit = dataMax + 5f;
+
+        left.setAxisMinimum(lowerLimit);
+        left.setAxisMaximum(upperLimit);
+
+        // --- LimitLine (без підписів, тільки пунктирні лінії)
+        left.removeAllLimitLines();
+
+        LimitLine up = new LimitLine(upperLimit);
+        up.setLineWidth(1f);
+        up.enableDashedLine(10f, 10f, 0f);
+        up.setLineColor(txtColor);
+
+        LimitLine lo = new LimitLine(lowerLimit);
+        lo.setLineWidth(1f);
+        lo.enableDashedLine(10f, 10f, 0f);
+        lo.setLineColor(txtColor);
+
+        left.addLimitLine(up);
+        left.addLimitLine(lo);
+        left.setDrawLimitLinesBehindData(true);
+
+        // --- Загальні
+        chart.getLegend().setEnabled(false);
+        chart.getDescription().setEnabled(false);
+
+        // 👇 додаткові відступи з усіх боків
+        chart.setExtraOffsets(3f, 18f, 30f, 12f);
+        // порядок: left, top, right, bottom
+
+        chart.setData(new LineData(dataSet));
         chart.invalidate();
     }
+
 
     // ---------- Завантаження серій ----------
     private void loadDayDataFor(String chipId) {

@@ -239,7 +239,8 @@
                     android:layout_height="wrap_content"
                     android:text="За день"
                     android:textAllCaps="false"
-                    android:layout_marginEnd="8dp"/>
+                    android:layout_marginEnd="8dp"
+                    app:cornerRadius="16dp"/>
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnWeek"
@@ -247,7 +248,8 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="За 7 днів"
-                    android:textAllCaps="false"/>
+                    android:textAllCaps="false"
+                    app:cornerRadius="16dp"/>
             </LinearLayout>
 
             <!-- 🔹 Чіпи кімнат -->
