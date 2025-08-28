@@ -7,5 +7,8 @@
     <color name="text">#ffffff</color>
     <color name="bg_weather_card">#dbe2f9</color>
     <color name="weather_card_text">#241d06</color>
-    <color name="main_color">#4363ea</color>
+    <color name="main_color">#4363ea</color>\
+    <color name="nav_item_text">#FFFFFF</color>       <!-- білий текст -->
+    <color name="nav_item_icon">#4363ea</color>      <!-- синій як у toolbar -->
+    <color name="nav_item_selected">#334C9EFF</color> <!-- синій з прозорістю -->
 </resources>

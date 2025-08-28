@@ -7,7 +7,6 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
-import android.graphics.Paint;
 import android.graphics.Typeface;
 import android.os.Bundle;
 import android.os.Handler;
@@ -17,6 +16,7 @@ import android.text.style.StyleSpan;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.EditText;
 import android.widget.FrameLayout;
@@ -30,12 +30,13 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.content.res.AppCompatResources;
 import androidx.appcompat.widget.PopupMenu;
-import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
+import androidx.core.view.GravityCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
@@ -62,6 +63,7 @@ import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.navigation.NavigationView;
 import com.google.android.material.progressindicator.CircularProgressIndicator;
 
 import java.time.Instant;
@@ -103,6 +105,9 @@ public class MainActivity extends ImmersiveActivity {
 
     private static final int PERMISSION_REQUEST_CODE = 1001;
 
+    private DrawerLayout drawerLayout;
+    private NavigationView navView;
+
     // 🔵 BLE для оновлення Wi-Fi
     private BleManager bleManager;
 
@@ -111,52 +116,90 @@ public class MainActivity extends ImmersiveActivity {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
 
+        // Дозволяємо контент заходити під статусбар/виріз
         getWindow().getAttributes().layoutInDisplayCutoutMode =
                 WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+
         setContentView(R.layout.activity_main);
 
-        // 👇 Insets для cutout (чубчика)
-        View root = findViewById(android.R.id.content);
-        ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
-            Insets cutoutInsets = insets.getInsets(WindowInsetsCompat.Type.displayCutout());
+        // ===== Toolbar (з урахуванням статусбару) =====
+        MaterialToolbar toolbar = findViewById(R.id.custom_toolbar);
+        ViewCompat.setOnApplyWindowInsetsListener(toolbar, (v, insets) -> {
+            Insets topInsets = insets.getInsets(
+                    WindowInsetsCompat.Type.statusBars() | WindowInsetsCompat.Type.displayCutout()
+            );
+            int top = topInsets.top;
 
-            Toolbar toolbar = findViewById(R.id.custom_toolbar);
-            if (toolbar != null) {
-                toolbar.setPadding(
-                        toolbar.getPaddingLeft(),
-                        cutoutInsets.top,   // відступ під notch
-                        toolbar.getPaddingRight(),
-                        toolbar.getPaddingBottom()
-                );
+            v.setPadding(v.getPaddingLeft(), top, v.getPaddingRight(), v.getPaddingBottom());
+
+            int actionBarSizePx = 0;
+            TypedValue tv = new TypedValue();
+            if (getTheme().resolveAttribute(com.google.android.material.R.attr.actionBarSize, tv, true)) {
+                actionBarSizePx = TypedValue.complexToDimensionPixelSize(tv.data, getResources().getDisplayMetrics());
             }
+            ViewGroup.LayoutParams lp = v.getLayoutParams();
+            lp.height = actionBarSizePx + top;
+            v.setLayoutParams(lp);
+
             return insets;
         });
 
-        requestAllPermissions();
-
-        // --- Діалог порогів після реєстрації (варіант A) ---
-        SharedPreferences sp = getSharedPreferences("user_prefs", MODE_PRIVATE);
-        boolean pending = sp.getBoolean("pending_threshold_dialog", false);
-
-        if (savedInstanceState == null
-                && pending
-                && !ThresholdPrefs.isSet(this)
-                && getSupportFragmentManager().findFragmentByTag(ThresholdDialogFragment.TAG) == null) {
-
-            getWindow().getDecorView().post(() -> {
-                new ThresholdDialogFragment()
-                        .show(getSupportFragmentManager(), ThresholdDialogFragment.TAG);
-            });
-
-            // скидаємо прапорець, щоб діалог більше не з’являвся
-            sp.edit().remove("pending_threshold_dialog").apply();
+        setSupportActionBar(toolbar);
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setDisplayShowTitleEnabled(false);
         }
 
-        // SwipeRefreshLayout
+        // ===== Drawer + NavigationView =====
+        drawerLayout = findViewById(R.id.drawer_layout);
+        navView = findViewById(R.id.nav_view);
+
+        // бургер відкриває меню
+        toolbar.setNavigationOnClickListener(v -> drawerLayout.openDrawer(GravityCompat.START));
+
+        // Пункти меню
+        navView.setNavigationItemSelectedListener(item -> {
+            item.setChecked(true);
+            drawerLayout.closeDrawers();
+
+            int id = item.getItemId();
+            if (id == R.id.nav_profile) {
+                new ProfileDialogFragment().show(
+                        getSupportFragmentManager(), ProfileDialogFragment.TAG);
+            } else if (id == R.id.nav_thresholds) {
+                if (getSupportFragmentManager().findFragmentByTag(ThresholdDialogFragment.TAG) == null) {
+                    new ThresholdDialogFragment().show(
+                            getSupportFragmentManager(), ThresholdDialogFragment.TAG);
+                }
+            } else if (id == R.id.nav_logout) {
+                new LogoutDialogFragment().show(
+                        getSupportFragmentManager(), LogoutDialogFragment.TAG);
+            }
+            return true;
+        });
+
+        // ===== Центровий заголовок у тулбарі + іконка справа =====
+        TextView title = toolbar.findViewById(R.id.toolbar_title);
+        String cached = getSavedUsername();
+        setHello(title, (cached != null) ? cached : getString(R.string.guest));
+        refreshUsernameFromServer(title);
+
+        ImageView profileIcon = toolbar.findViewById(R.id.toolbar_profile_icon);
+        if (profileIcon != null) {
+            profileIcon.setOnClickListener(v ->
+                    new ProfileDialogFragment().show(
+                            getSupportFragmentManager(), ProfileDialogFragment.TAG));
+        }
+
+        // ===== Дозволи =====
+        requestAllPermissions();
+
+        // ===== Weather =====
+        weatherManager = new WeatherManager(this);
+        weatherManager.startWeatherUpdates();
+
+        // SwipeRefresh
         SwipeRefreshLayout swipeRefresh = findViewById(R.id.swipeRefresh);
-        swipeRefresh.setColorSchemeColors(
-                ContextCompat.getColor(this, R.color.main_color)
-        );
+        swipeRefresh.setColorSchemeColors(ContextCompat.getColor(this, R.color.main_color));
         swipeRefresh.setProgressBackgroundColorSchemeColor(
                 ContextCompat.getColor(this, R.color.bg_weather_card)
         );
@@ -167,43 +210,33 @@ public class MainActivity extends ImmersiveActivity {
             swipeRefresh.postDelayed(() -> swipeRefresh.setRefreshing(false), 1000);
         });
 
-        // --- Toolbar ---
-        Toolbar toolbar = findViewById(R.id.custom_toolbar);
-        setSupportActionBar(toolbar);
-        getSupportActionBar().setDisplayShowTitleEnabled(false);
+        // ===== Діалог порогів після реєстрації =====
+        SharedPreferences sp = getSharedPreferences("user_prefs", MODE_PRIVATE);
+        boolean pending = sp.getBoolean("pending_threshold_dialog", false);
+        if (savedInstanceState == null
+                && pending
+                && !ThresholdPrefs.isSet(this)
+                && getSupportFragmentManager().findFragmentByTag(ThresholdDialogFragment.TAG) == null) {
+            getWindow().getDecorView().post(() ->
+                    new ThresholdDialogFragment().show(getSupportFragmentManager(), ThresholdDialogFragment.TAG));
+            sp.edit().remove("pending_threshold_dialog").apply();
+        }
 
-        TextView title = toolbar.findViewById(R.id.toolbar_title);
-        String cached = getSavedUsername();
-        setHello(title, (cached != null) ? cached : getString(R.string.guest));
-        refreshUsernameFromServer(title);
-        // --- /Toolbar ---
-
-        // Підписи секцій
-        TextView labelWeather = findViewById(R.id.labelWeather);
-        TextView labelRooms   = findViewById(R.id.labelRooms);
-        TextView labelCharts  = findViewById(R.id.labelCharts);
-        labelWeather.setPaintFlags(labelWeather.getPaintFlags() | Paint.UNDERLINE_TEXT_FLAG);
-        labelRooms.setPaintFlags(labelRooms.getPaintFlags() | Paint.UNDERLINE_TEXT_FLAG);
-        labelCharts.setPaintFlags(labelCharts.getPaintFlags() | Paint.UNDERLINE_TEXT_FLAG);
-
-        // Погода
-        weatherManager = new WeatherManager(this);
-        weatherManager.startWeatherUpdates();
-
-        // BLE
+        // ===== BLE =====
         bleManager = new BleManager(this);
 
-        // Список кімнат
+        // ===== Recycler кімнат =====
         setupRoomsRecycler();
 
-        // FAB -> CreateRoomActivity
+        // ===== FAB -> CreateRoomActivity =====
         createRoomLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> {
                     if (result.getResultCode() == RESULT_OK && result.getData() != null) {
-                        String chipId = result.getData().getStringExtra("chipId");
+                        String chipId   = result.getData().getStringExtra("chipId");
                         String roomName = result.getData().getStringExtra("roomName");
-                        String imageName = result.getData().getStringExtra("imageName");
+                        String imageName= result.getData().getStringExtra("imageName");
+                        // TODO: збереження кімнати / POST /ownership
                     }
                 }
         );
@@ -212,18 +245,17 @@ public class MainActivity extends ImmersiveActivity {
                 createRoomLauncher.launch(new Intent(this, CreateRoomActivity.class))
         );
 
-        // 📊 Графік
-        chart  = findViewById(R.id.chart);
-        btnDay = findViewById(R.id.btnDay);
-        btnWeek = findViewById(R.id.btnWeek);
-        btnTemperature = findViewById(R.id.btnTemperature);
-        btnHumidity = findViewById(R.id.btnHumidity);
+        // ===== Графіки =====
+        chart         = findViewById(R.id.chart);
+        btnDay        = findViewById(R.id.btnDay);
+        btnWeek       = findViewById(R.id.btnWeek);
+        btnTemperature= findViewById(R.id.btnTemperature);
+        btnHumidity   = findViewById(R.id.btnHumidity);
+        chipGroupRooms= findViewById(R.id.chipGroupRooms);
+
         setupChart(chart);
 
-        // ChipGroup кімнат
-        chipGroupRooms = findViewById(R.id.chipGroupRooms);
-
-        // Кнопки ДЕНЬ/ТИЖДЕНЬ
+        // Кнопки День / Тиждень
         btnDay.setOnClickListener(v -> {
             highlightButton(btnDay, btnWeek);
             isDaySelected = true;
@@ -236,7 +268,7 @@ public class MainActivity extends ImmersiveActivity {
         });
         highlightButton(btnDay, btnWeek);
 
-        // Кнопки ТЕМПЕРАТУРА / ВОЛОГІСТЬ
+        // Кнопки Температура / Вологість
         btnTemperature.setOnClickListener(v -> {
             highlightButton(btnTemperature, btnHumidity);
             showTemperature = true;
@@ -249,10 +281,11 @@ public class MainActivity extends ImmersiveActivity {
         });
         highlightButton(btnTemperature, btnHumidity);
 
-        // Завантаження кімнат
+        // ===== Завантаження даних кімнат =====
         loadRoomsFromServer();
         startPeriodicRoomRefresh();
     }
+
     private void setupRoomsRecycler() {
         roomRecyclerView = findViewById(R.id.room_recycler_view);
         LinearLayoutManager lm = new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false);
@@ -954,7 +987,11 @@ public class MainActivity extends ImmersiveActivity {
     }
 
     private void setHello(TextView title, String name) {
-        String text = getString(R.string.hello_username, name);
+        String text = getString(R.string.username_house, name);
+        if (title == null) {
+            if (getSupportActionBar() != null) getSupportActionBar().setTitle(text);
+            return;
+        }
         SpannableString s = new SpannableString(text);
         int start = text.indexOf(name);
         if (start >= 0) s.setSpan(new StyleSpan(Typeface.BOLD), start, start + name.length(), 0);

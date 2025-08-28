@@ -1,0 +1,18 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <group android:checkableBehavior="single">
+        <item
+            android:id="@+id/nav_profile"
+            android:title="Профіль"
+            android:icon="@drawable/ic_account" />
+
+        <item
+            android:id="@+id/nav_thresholds"
+            android:title="Налаштування порогів"
+            android:icon="@drawable/ic_settings" />
+
+        <item
+            android:id="@+id/nav_logout"
+            android:title="Вийти"
+            android:icon="@drawable/ic_logout" />
+    </group>
+</menu>

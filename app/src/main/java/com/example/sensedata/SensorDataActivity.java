@@ -251,7 +251,6 @@ public class SensorDataActivity extends ImmersiveActivity {
         });
     }
 
-
     // ----------- ПОРАДИ -----------
 
     private void loadRecommendations(boolean saveIfAny) {
@@ -259,28 +258,36 @@ public class SensorDataActivity extends ImmersiveActivity {
         adviceLoading = true;
 
         settingsApi.getLatestAdvice(chipId).enqueue(new Callback<RecommendationsDto>() {
-            @Override public void onResponse(Call<RecommendationsDto> c, Response<RecommendationsDto> r) {
+            @Override
+            public void onResponse(Call<RecommendationsDto> call, Response<RecommendationsDto> resp) {
                 adviceLoading = false;
-                if (!r.isSuccessful() || r.body()==null) {
+
+                if (!resp.isSuccessful() || resp.body() == null) {
                     tvAdvice.setText("—");
                     return;
                 }
-                List<String> adv = r.body().advice;
-                if (adv == null || adv.isEmpty()) {
-                    tvAdvice.setText("Все в нормі");
-                    return;
-                }
-                tvAdvice.setText("• " + TextUtils.join("\n• ", adv));
 
-                if (saveIfAny) {
-                    settingsApi.saveLatestAdvice(chipId).enqueue(new Callback<SaveLatestRecommendationDto>() {
-                        @Override public void onResponse(Call<SaveLatestRecommendationDto> c2, Response<SaveLatestRecommendationDto> r2) { }
-                        @Override public void onFailure(Call<SaveLatestRecommendationDto> c2, Throwable t) { }
-                    });
+                List<String> adv = resp.body().advice;
+
+                if (adv == null || adv.isEmpty()) {
+                    tvAdvice.setText("Все в нормі ✅");
+                } else {
+                    tvAdvice.setText("• " + TextUtils.join("\n• ", adv));
+
+                    // Якщо хочеш, зберігаємо останню пораду в історію
+                    if (saveIfAny) {
+                        settingsApi.saveLatestAdvice(chipId).enqueue(new Callback<SaveLatestRecommendationDto>() {
+                            @Override public void onResponse(Call<SaveLatestRecommendationDto> c, Response<SaveLatestRecommendationDto> r) { }
+                            @Override public void onFailure(Call<SaveLatestRecommendationDto> c, Throwable t) { }
+                        });
+                    }
                 }
             }
-            @Override public void onFailure(Call<RecommendationsDto> c, Throwable t) {
+
+            @Override
+            public void onFailure(Call<RecommendationsDto> call, Throwable t) {
                 adviceLoading = false;
+                tvAdvice.setText("Помилка при отриманні порад ❌");
             }
         });
     }
