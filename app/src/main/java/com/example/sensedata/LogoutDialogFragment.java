@@ -32,7 +32,7 @@ public class LogoutDialogFragment extends DialogFragment {
         btnCancel.setOnClickListener(v -> dismiss());
         btnConfirm.setOnClickListener(v -> {
             // чистимо сесію
-            SharedPreferences sp = requireContext().getSharedPreferences("user_prefs", Context.MODE_PRIVATE);
+            SharedPreferences sp = requireContext().getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE);
             sp.edit()
                     .remove("auth_token")
                     .remove("refresh_token")

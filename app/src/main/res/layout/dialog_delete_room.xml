@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_chip_rounded"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:id="@+id/tvDeleteTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Видалити кімнату?"
+        android:textStyle="bold"
+        android:textSize="18sp"
+        android:textColor="@color/weather_card_text" />
+
+    <TextView
+        android:id="@+id/tvDeleteMsg"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Це відв'яже пристрій від вашого акаунта."
+        android:textColor="@color/weather_card_text"
+        android:layout_marginTop="10dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="end"
+        android:layout_marginTop="16dp">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnCancel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Скасувати"
+            style="@style/Widget.SenseData.Dialog.Filled"/>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnDelete"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Видалити"
+            android:layout_marginStart="8dp"
+            style="@style/Widget.SenseData.Dialog.Filled" />
+    </LinearLayout>
+</LinearLayout>

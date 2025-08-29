@@ -8,6 +8,7 @@ import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -61,6 +62,12 @@ public class LoginActivity extends ImmersiveActivity {
 
             doLogin(login, password);
         });
+
+        TextView textRegister = findViewById(R.id.textRegister);
+        textRegister.setOnClickListener(v -> {
+            Intent intent = new Intent(LoginActivity.this, RegisterActivity.class);
+            startActivity(intent);
+        });
     }
 
 
@@ -80,6 +87,7 @@ public class LoginActivity extends ImmersiveActivity {
                             .putString("username", login)
                             .putString("accessToken", token.getAccessToken())
                             .putString("refreshToken", token.getRefreshToken())
+                            .putBoolean("firstRun", false)
                             .apply();
 
                     Toast.makeText(LoginActivity.this, "Успішний вхід", Toast.LENGTH_SHORT).show();

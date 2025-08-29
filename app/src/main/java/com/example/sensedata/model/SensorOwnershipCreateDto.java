@@ -1,14 +1,14 @@
 package com.example.sensedata.model;
 
 public class SensorOwnershipCreateDto {
-    private int userId;
     private String chipId;
+    private int userId;
     private String roomName;
     private String imageName;
 
-    public SensorOwnershipCreateDto(int userId, String chipId, String roomName, String imageName) {
-        this.userId = userId;
+    public SensorOwnershipCreateDto(String chipId, int userId, String roomName, String imageName) {
         this.chipId = chipId;
+        this.userId = userId;
         this.roomName = roomName;
         this.imageName = imageName;
     }

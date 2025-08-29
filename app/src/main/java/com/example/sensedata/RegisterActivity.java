@@ -57,6 +57,14 @@ public class RegisterActivity extends ImmersiveActivity {
                         | WindowManager.LayoutParams.SOFT_INPUT_STATE_HIDDEN
         );
 
+        View root = findViewById(R.id.register_root);
+        if (root == null) root = findViewById(android.R.id.content);
+        applyImePadding(root);
+        if (!(root instanceof androidx.core.widget.NestedScrollView)) {
+            View btn = findViewById(R.id.buttonRegister);
+            if (btn != null) applyImeMargin(btn);
+        }
+
         // Ініціалізація в’юх
         usernameEditText = findViewById(R.id.editTextUsername);
         emailEditText = findViewById(R.id.editTextEmail);
@@ -127,7 +135,7 @@ public class RegisterActivity extends ImmersiveActivity {
                     UserResponse body = resp.body();
 
                     // прапорець для MainActivity → показати ThresholdDialog
-                    getSharedPreferences("user_prefs", MODE_PRIVATE)
+                    getSharedPreferences("MyAppPrefs", MODE_PRIVATE)
                             .edit().putBoolean("pending_threshold_dialog", true).apply();
 
                     boolean hasTokens = body.getAccessToken() != null && body.getRefreshToken() != null;
@@ -186,6 +194,7 @@ public class RegisterActivity extends ImmersiveActivity {
                 .putString("username", resp.getUsername())
                 .putString("accessToken", resp.getAccessToken())
                 .putString("refreshToken", resp.getRefreshToken())
+                .putBoolean("firstRun", false)
                 .apply();
     }
 }

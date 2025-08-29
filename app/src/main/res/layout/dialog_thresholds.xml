@@ -19,6 +19,25 @@
         android:gravity="center"
         android:paddingBottom="12dp" />
 
+    <!-- 🔹 Вибір кімнати -->
+    <HorizontalScrollView
+        android:id="@+id/chipRoomsWrapper"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:overScrollMode="never"
+        android:fillViewport="true">
+
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/chipGroupThresholdRooms"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            app:singleSelection="true"
+            app:singleLine="true"
+            app:selectionRequired="true"/>
+    </HorizontalScrollView>
+
     <!-- Коротке пояснення -->
     <TextView
         android:id="@+id/subTitle"

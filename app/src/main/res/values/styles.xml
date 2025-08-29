@@ -178,5 +178,5 @@
         <item name="android:textStyle">bold</item>
     </style>
 
-
+    <dimen name="chip_stroke_width">2dp</dimen>
 </resources>

@@ -1,3 +1,4 @@
+// ---- POST (відправка абсолютних значень) ----
 package com.example.sensedata.model;
 
 public class AdjustmentAbsoluteItemDto {
