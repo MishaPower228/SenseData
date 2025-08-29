@@ -1,42 +1,48 @@
 package com.example.sensedata.network;
 
-import com.example.sensedata.model.RoomWithSensorDto;
-import com.example.sensedata.model.SensorOwnershipCreateDto;
-import com.example.sensedata.model.SensorOwnershipUpdateDto;
+import com.example.sensedata.model.room.RoomWithSensorDto;
+import com.example.sensedata.model.sensorownership.SensorOwnershipRequestDto;
+import com.example.sensedata.model.sensorownership.SensorOwnershipUpdateDto;
 
 import java.util.List;
 
 import retrofit2.Call;
 import retrofit2.http.Body;
+import retrofit2.http.DELETE;
 import retrofit2.http.GET;
+import retrofit2.http.Header;
 import retrofit2.http.POST;
 import retrofit2.http.PUT;
 import retrofit2.http.Path;
 
 public interface RoomApiService {
 
-    // POST: створити ownership — сервер тепер повертає RoomWithSensorDto (201 Created)
+    // Створити ownership (username + chipId + roomName + imageName)
     @POST("DisplayData/ownership")
-    Call<RoomWithSensorDto> createRoom(@Body SensorOwnershipCreateDto request);
+    Call<RoomWithSensorDto> createOwnership(@Body SensorOwnershipRequestDto body);
 
-    // GET: отримати кімнату по chipId+userId
+    // Отримати кімнату за chipId + userId (залишаємо як є, якщо бек так очікує)
     @GET("DisplayData/ownership/{chipId}/user/{userId}/latest")
     Call<RoomWithSensorDto> getRoomByChipId(
             @Path("chipId") String chipId,
             @Path("userId") int userId
     );
 
-    // GET: всі кімнати користувача
+    // Усі кімнати користувача
     @GET("DisplayData/byUser/{userId}")
     Call<List<RoomWithSensorDto>> getAllRooms(@Path("userId") int userId);
 
-    @retrofit2.http.PUT("sensordata/ownership")
+    // Оновлення ownership з ETag (If-Match)
+    @PUT("sensordata/ownership")
     Call<Void> updateOwnership(
-            @retrofit2.http.Header("If-Match") String ifMatch,
-            @retrofit2.http.Body com.example.sensedata.model.SensorOwnershipUpdateDto body
+            @Header("If-Match") String ifMatch,
+            @Body SensorOwnershipUpdateDto body
     );
 
-    @retrofit2.http.DELETE("sensordata/ownership/{chipId}/user/{userId}")
-    Call<Void> deleteOwnership(@retrofit2.http.Path("chipId") String chipId,
-                               @retrofit2.http.Path("userId") int userId);
+    // Видалення ownership
+    @DELETE("sensordata/ownership/{chipId}/user/{userId}")
+    Call<Void> deleteOwnership(
+            @Path("chipId") String chipId,
+            @Path("userId") int userId
+    );
 }

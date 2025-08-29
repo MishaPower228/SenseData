@@ -6,8 +6,7 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 
 import com.example.sensedata.R;
-import com.example.sensedata.model.RecommendationHistoryDto;
-import com.google.android.material.chip.Chip;
+import com.example.sensedata.model.recommendations.RecommendationHistoryDto;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;

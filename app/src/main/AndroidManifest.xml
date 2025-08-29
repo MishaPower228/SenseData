@@ -25,7 +25,7 @@
 
         <!-- 🔹 Головний екран після логіну -->
         <activity
-            android:name=".MainActivity"
+            android:name=".activity.MainActivity"
             android:resizeableActivity="true"
             android:screenOrientation="portrait"
             android:windowLayoutInDisplayCutoutMode="shortEdges"
@@ -33,13 +33,13 @@
 
         <!-- 🔹 Логін -->
         <activity
-            android:name=".LoginActivity"
+            android:name=".user.LoginActivity"
             android:screenOrientation="portrait"
             android:exported="true" />
 
         <!-- 🔹 Реєстрація (точка входу додатку) -->
         <activity
-            android:name=".RegisterActivity"
+            android:name=".user.RegisterActivity"
             android:screenOrientation="portrait"
             android:exported="true">
             <intent-filter>
@@ -50,13 +50,13 @@
 
         <!-- 🔹 Створення кімнати -->
         <activity
-            android:name=".CreateRoomActivity"
+            android:name=".activity.CreateRoomActivity"
             android:screenOrientation="portrait"
             android:exported="false" />
 
         <!-- 🔹 Дані сенсорів -->
         <activity
-            android:name=".SensorDataActivity"
+            android:name=".activity.SensorDataActivity"
             android:screenOrientation="portrait"
             android:windowLayoutInDisplayCutoutMode="shortEdges"
             android:exported="false" />

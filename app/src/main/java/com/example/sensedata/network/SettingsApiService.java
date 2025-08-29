@@ -1,12 +1,11 @@
 package com.example.sensedata.network;
 
-import com.example.sensedata.model.AdjustmentItemResponseDto;
-import com.example.sensedata.model.AdjustmentAbsoluteRequestDto;
-import com.example.sensedata.model.AdjustmentAbsoluteResponseDto;
-import com.example.sensedata.model.EffectiveSettingDto;
-import com.example.sensedata.model.RecommendationHistoryDto;
-import com.example.sensedata.model.RecommendationsDto;
-import com.example.sensedata.model.SaveLatestRecommendationDto;
+import com.example.sensedata.model.adjustment.AdjustmentAbsoluteRequestDto;
+import com.example.sensedata.model.adjustment.AdjustmentAbsoluteResponseDto;
+import com.example.sensedata.model.adjustment.EffectiveSettingDto;
+import com.example.sensedata.model.recommendations.RecommendationHistoryDto;
+import com.example.sensedata.model.recommendations.RecommendationsDto;
+import com.example.sensedata.model.recommendations.SaveLatestRecommendationDto;
 
 import java.util.List;
 
@@ -32,16 +31,14 @@ public interface SettingsApiService {
             @Query("take") int take
     );
 
-    // ---- Thresholds ----
+    // ---- Абсолютні пороги (встановлення)
     @POST("settings/adjustments/{chipId}")
     Call<AdjustmentAbsoluteResponseDto> postAdjustmentsForChip(
             @Path("chipId") String chipId,
             @Body AdjustmentAbsoluteRequestDto body
     );
 
-    // ---- Effective thresholds ----
+    // ---- Ефективні пороги (читаємо те, що реально діє)
     @GET("settings/effective/{chipId}")
-    Call<List<EffectiveSettingDto>> getEffectiveByChip(
-            @Path("chipId") String chipId
-    );
+    Call<List<EffectiveSettingDto>> getEffectiveByChip(@Path("chipId") String chipId);
 }

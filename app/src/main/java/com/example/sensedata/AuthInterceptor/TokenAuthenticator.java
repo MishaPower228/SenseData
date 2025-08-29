@@ -5,8 +5,8 @@ import android.content.SharedPreferences;
 
 import androidx.annotation.Nullable;
 
-import com.example.sensedata.model.RefreshRequest;
-import com.example.sensedata.model.UserResponse;
+import com.example.sensedata.model.user.RefreshRequest;
+import com.example.sensedata.model.user.UserResponse;
 import com.example.sensedata.network.ApiClientMain;
 import com.example.sensedata.network.UserApiService;
 
@@ -18,7 +18,7 @@ import okhttp3.Response;
 import okhttp3.Route;
 
 public class TokenAuthenticator implements Authenticator {
-    private Context context;
+    private final Context context;
 
     public TokenAuthenticator(Context context) {
         this.context = context.getApplicationContext();

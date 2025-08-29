@@ -12,7 +12,7 @@ import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.sensedata.R;
-import com.example.sensedata.model.RoomWithSensorDto;
+import com.example.sensedata.model.room.RoomWithSensorDto;
 
 import java.util.Locale;
 import java.util.Objects;
