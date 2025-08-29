@@ -21,13 +21,6 @@ public interface RoomApiService {
     @POST("DisplayData/ownership")
     Call<RoomWithSensorDto> createOwnership(@Body SensorOwnershipRequestDto body);
 
-    // Отримати кімнату за chipId + userId (залишаємо як є, якщо бек так очікує)
-    @GET("DisplayData/ownership/{chipId}/user/{userId}/latest")
-    Call<RoomWithSensorDto> getRoomByChipId(
-            @Path("chipId") String chipId,
-            @Path("userId") int userId
-    );
-
     // Усі кімнати користувача
     @GET("DisplayData/byUser/{userId}")
     Call<List<RoomWithSensorDto>> getAllRooms(@Path("userId") int userId);

@@ -16,9 +16,11 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+
+import com.example.sensedata.R;
 import com.example.sensedata.activity.ImmersiveActivity;
 import com.example.sensedata.activity.MainActivity;
-import com.example.sensedata.R;
 import com.example.sensedata.model.user.LoginRequest;
 import com.example.sensedata.model.user.RegisterRequest;
 import com.example.sensedata.model.user.UserResponse;
@@ -32,10 +34,7 @@ import retrofit2.Response;
 public class RegisterActivity extends ImmersiveActivity {
 
     private EditText usernameEditText, emailEditText, passwordEditText, confirmPasswordEditText;
-    private Button registerButton;
-    private TextView loginLink;
     private LinearLayout registerCard;
-    private CheckBox showPasswordCheckBox;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -64,16 +63,19 @@ public class RegisterActivity extends ImmersiveActivity {
         emailEditText = findViewById(R.id.editTextEmail);
         passwordEditText = findViewById(R.id.editTextPassword);
         confirmPasswordEditText = findViewById(R.id.editTextConfirmPassword);
-        showPasswordCheckBox = findViewById(R.id.checkboxShowPassword);
-        registerButton = findViewById(R.id.buttonRegister);
-        loginLink = findViewById(R.id.textLoginLink);
         registerCard = findViewById(R.id.registerCard);
 
+        Button registerButton = findViewById(R.id.buttonRegister);
+        TextView loginLink = findViewById(R.id.textLoginLink);
+        CheckBox showPasswordCheckBox = findViewById(R.id.checkboxShowPassword);
+
+        // Лінк на логін
         loginLink.setOnClickListener(v -> {
             startActivity(new Intent(this, LoginActivity.class));
             finish();
         });
 
+        // Показати/сховати пароль
         showPasswordCheckBox.setOnCheckedChangeListener((btn, isChecked) -> {
             if (isChecked) {
                 passwordEditText.setTransformationMethod(android.text.method.HideReturnsTransformationMethod.getInstance());
@@ -86,6 +88,7 @@ public class RegisterActivity extends ImmersiveActivity {
             confirmPasswordEditText.setSelection(confirmPasswordEditText.getText().length());
         });
 
+        // Кнопка реєстрації
         registerButton.setOnClickListener(v -> {
             String usernameInput = usernameEditText.getText().toString().trim();
             String email = emailEditText.getText().toString().trim();
@@ -122,13 +125,13 @@ public class RegisterActivity extends ImmersiveActivity {
         RegisterRequest req = new RegisterRequest(username, email, password);
         UserApiService api = ApiClientMain.getClient(this).create(UserApiService.class);
 
-        api.register(req).enqueue(new Callback<UserResponse>() {
+        api.register(req).enqueue(new Callback<>() {
             @Override
-            public void onResponse(Call<UserResponse> call, Response<UserResponse> resp) {
+            public void onResponse(@NonNull Call<UserResponse> call,
+                                   @NonNull Response<UserResponse> resp) {
                 if (resp.isSuccessful() && resp.body() != null) {
                     UserResponse body = resp.body();
 
-                    // прапорець для MainActivity → показати ThresholdDialog
                     getSharedPreferences("MyAppPrefs", MODE_PRIVATE)
                             .edit().putBoolean("pending_threshold_dialog", true).apply();
 
@@ -139,7 +142,6 @@ public class RegisterActivity extends ImmersiveActivity {
                         startActivity(new Intent(RegisterActivity.this, MainActivity.class));
                         finish();
                     } else {
-                        // немає токенів → робимо автоматичний логін
                         loginUser(username, password);
                     }
                 } else {
@@ -147,8 +149,10 @@ public class RegisterActivity extends ImmersiveActivity {
                     animateError();
                 }
             }
+
             @Override
-            public void onFailure(Call<UserResponse> call, Throwable t) {
+            public void onFailure(@NonNull Call<UserResponse> call,
+                                  @NonNull Throwable t) {
                 Log.e("REGISTER_ERROR", "❌ " + t.getMessage(), t);
                 Toast.makeText(RegisterActivity.this, "Сервер недоступний", Toast.LENGTH_SHORT).show();
                 animateError();
@@ -160,9 +164,10 @@ public class RegisterActivity extends ImmersiveActivity {
         LoginRequest req = new LoginRequest(username, password);
         UserApiService api = ApiClientMain.getClient(this).create(UserApiService.class);
 
-        api.login(req).enqueue(new Callback<UserResponse>() {
+        api.login(req).enqueue(new Callback<>() {
             @Override
-            public void onResponse(Call<UserResponse> call, Response<UserResponse> resp) {
+            public void onResponse(@NonNull Call<UserResponse> call,
+                                   @NonNull Response<UserResponse> resp) {
                 if (resp.isSuccessful() && resp.body() != null) {
                     saveTokens(resp.body());
                     Toast.makeText(RegisterActivity.this, "Автоматичний вхід виконано", Toast.LENGTH_SHORT).show();
@@ -173,8 +178,10 @@ public class RegisterActivity extends ImmersiveActivity {
                     animateError();
                 }
             }
+
             @Override
-            public void onFailure(Call<UserResponse> call, Throwable t) {
+            public void onFailure(@NonNull Call<UserResponse> call,
+                                  @NonNull Throwable t) {
                 Toast.makeText(RegisterActivity.this, "Помилка логіну: " + t.getMessage(), Toast.LENGTH_SHORT).show();
                 animateError();
             }

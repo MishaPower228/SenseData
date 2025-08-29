@@ -18,15 +18,6 @@ public class WeatherResponse {
         @SerializedName("temp")
         public float temp;
 
-        @SerializedName("feels_like")
-        public float feelsLike;
-
-        @SerializedName("temp_min")
-        public float tempMin;
-
-        @SerializedName("temp_max")
-        public float tempMax;
-
         @SerializedName("humidity")
         public int humidity;
 

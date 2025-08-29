@@ -11,5 +11,4 @@ public class UserProfileDto {
     public int getId() { return id; }
     public String getUsername() { return username; }
     public String getEmail() { return email; }
-    public String getRoleName() { return roleName; }
 }

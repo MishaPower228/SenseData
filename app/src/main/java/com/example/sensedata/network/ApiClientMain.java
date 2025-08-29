@@ -19,29 +19,12 @@ import retrofit2.converter.gson.GsonConverterFactory;
 public final class ApiClientMain {
 
     // ⚠️ Замiни на свою адресу. Обов’язково закінчується на /api/
-    private static String BASE_URL = "http://192.168.5.32:5210/api/";
+    private final static String BASE_URL = "http://192.168.5.32:5210/api/";
 
     // можна вмикати/вимикати логування без BuildConfig
-    private static volatile boolean HTTP_LOGS_ENABLED = true;
+    private final static boolean HTTP_LOGS_ENABLED = true;
 
     private static volatile Retrofit retrofit;
-
-    private ApiClientMain() {}
-
-    /** Увімкнути/вимкнути HTTP-логи в рантаймі (за потреби) */
-    public static void setHttpLoggingEnabled(boolean enabled) {
-        HTTP_LOGS_ENABLED = enabled;
-        reset();
-    }
-
-    /** За потреби поміняти базовий URL і перебудувати клієнт */
-    public static void setBaseUrl(String baseUrl) {
-        if (baseUrl == null || !baseUrl.endsWith("/")) {
-            throw new IllegalArgumentException("BASE_URL must end with '/'");
-        }
-        BASE_URL = baseUrl;
-        reset();
-    }
 
     public static Retrofit getClient(Context context) {
         if (retrofit == null) {
@@ -59,10 +42,6 @@ public final class ApiClientMain {
             }
         }
         return retrofit;
-    }
-
-    public static void reset() {
-        retrofit = null;
     }
 
     // ----------------- helpers -----------------
@@ -90,7 +69,6 @@ public final class ApiClientMain {
 
     private static Gson gson() {
         return new GsonBuilder()
-                .setLenient()
                 .create();
     }
 }
