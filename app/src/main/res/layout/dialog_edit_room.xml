@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content">
 
@@ -15,7 +16,7 @@
             android:id="@+id/titleImages"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Нова назва кімнати"
+            android:text="@string/new_room_name_title"
             android:textStyle="bold"
             android:textSize="18sp"
             android:textColor="@color/weather_card_text" />
@@ -24,8 +25,9 @@
             android:id="@+id/etRoomName"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Назва кімнати"
+            android:hint="@string/room_name_hint"
             android:inputType="textCapWords"
+            android:autofillHints="name"
             android:background="@drawable/bg_weather_label"
             android:textColor="@color/weather_card_text"
             android:textColorHint="@color/weather_card_text"
@@ -36,7 +38,7 @@
             android:id="@+id/labelPickImage"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Оберіть нове зображення"
+            android:text="@string/select_new_image"
             android:textColor="@color/weather_card_text"
             android:padding="12dp"
             android:layout_marginTop="16dp" />
@@ -70,7 +72,8 @@
                     android:src="@drawable/livingroom"
                     android:background="@drawable/bg_rounded_image"
                     android:clipToOutline="true"
-                    android:contentDescription="Living Room"
+                    tools:targetApi="31"
+                    android:contentDescription="@string/living_room"
                     android:tag="livingroom" />
             </FrameLayout>
 
@@ -91,7 +94,8 @@
                     android:src="@drawable/kitchen"
                     android:background="@drawable/bg_rounded_image"
                     android:clipToOutline="true"
-                    android:contentDescription="Kitchen"
+                    tools:targetApi="31"
+                    android:contentDescription="@string/kitchen"
                     android:tag="kitchen" />
             </FrameLayout>
 
@@ -112,7 +116,8 @@
                     android:src="@drawable/homeoffice"
                     android:background="@drawable/bg_rounded_image"
                     android:clipToOutline="true"
-                    android:contentDescription="Home Office"
+                    tools:targetApi="31"
+                    android:contentDescription="@string/home_office"
                     android:tag="homeoffice" />
             </FrameLayout>
 
@@ -133,7 +138,8 @@
                     android:src="@drawable/bathroom"
                     android:background="@drawable/bg_rounded_image"
                     android:clipToOutline="true"
-                    android:contentDescription="Bathroom"
+                    tools:targetApi="31"
+                    android:contentDescription="@string/bathroom"
                     android:tag="bathroom" />
             </FrameLayout>
 
@@ -154,7 +160,8 @@
                     android:src="@drawable/bedroom"
                     android:background="@drawable/bg_rounded_image"
                     android:clipToOutline="true"
-                    android:contentDescription="Bedroom"
+                    tools:targetApi="31"
+                    android:contentDescription="@string/bedroom"
                     android:tag="bedroom" />
             </FrameLayout>
 
@@ -175,7 +182,8 @@
                     android:src="@drawable/balkon"
                     android:background="@drawable/bg_rounded_image"
                     android:clipToOutline="true"
-                    android:contentDescription="Balkon"
+                    tools:targetApi="31"
+                    android:contentDescription="@string/balkon"
                     android:tag="balkon" />
             </FrameLayout>
         </GridLayout>
@@ -192,14 +200,14 @@
                 android:id="@+id/btnCancel"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Скасувати"
+                android:text="@string/cancel"
                 style="@style/Widget.SenseData.Dialog.Filled"/>
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnSave"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Зберегти"
+                android:text="@string/save"
                 android:layout_marginStart="8dp"
                 style="@style/Widget.SenseData.Dialog.Filled" />
         </LinearLayout>

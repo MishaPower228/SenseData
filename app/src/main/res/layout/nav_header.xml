@@ -11,7 +11,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:padding="16dp"
-        android:text="SenseData"
+        android:text="@string/sensedata"
         android:textColor="@android:color/white"
         android:textSize="18sp"
         android:textStyle="bold" />

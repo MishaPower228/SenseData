@@ -12,14 +12,14 @@
         android:id="@+id/titleText"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Пороги комфорту"
+        android:text="@string/comfort_thresholds_title"
         android:textSize="20sp"
         android:textStyle="bold"
         android:textColor="@color/weather_card_text"
         android:gravity="center"
         android:paddingBottom="12dp" />
 
-    <!-- 🔹 Вибір кімнати -->
+    <!-- Вибір кімнати -->
     <HorizontalScrollView
         android:id="@+id/chipRoomsWrapper"
         android:layout_width="match_parent"
@@ -43,13 +43,13 @@
         android:id="@+id/subTitle"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Встановіть діапазони для сповіщень і рекомендацій"
+        android:text="@string/comfort_thresholds_subtitle"
         android:textSize="14sp"
         android:textColor="@color/weather_card_text"
         android:alpha="0.8"
         android:paddingBottom="12dp" />
 
-    <!-- Температура: заголовок + поточне значення справа як бейдж -->
+    <!-- Температура -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -62,7 +62,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Температура (°C)"
+            android:text="@string/temperature_label_unit"
             android:textStyle="bold"
             android:textColor="@color/weather_card_text" />
 
@@ -75,7 +75,7 @@
             android:paddingRight="10dp"
             android:paddingTop="4dp"
             android:paddingBottom="4dp"
-            android:text="18.0 – 25.0 °C"
+            android:text="@string/temperature_range_example"
             android:textColor="@color/weather_card_text"
             android:textSize="14sp" />
     </LinearLayout>
@@ -100,7 +100,7 @@
         app:dividerColor="@color/main_color"
         app:dividerThickness="1dp" />
 
-    <!-- Вологість: заголовок + поточне значення справа як бейдж -->
+    <!-- Вологість -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -113,7 +113,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Вологість (%)"
+            android:text="@string/humidity_label_unit"
             android:textStyle="bold"
             android:textColor="@color/weather_card_text" />
 
@@ -126,7 +126,7 @@
             android:paddingRight="10dp"
             android:paddingTop="4dp"
             android:paddingBottom="4dp"
-            android:text="30 – 60 %"
+            android:text="@string/humidity_range_example"
             android:textColor="@color/weather_card_text"
             android:textSize="14sp" />
     </LinearLayout>
@@ -147,13 +147,13 @@
         android:id="@+id/hint"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Ці пороги можна змінити пізніше в налаштуваннях"
+        android:text="@string/thresholds_hint_changeable"
         android:textSize="12sp"
         android:textColor="@color/weather_card_text"
         android:alpha="0.7"
         android:paddingTop="10dp" />
 
-    <!-- 👇 Наші кнопки замість стандартної панелі -->
+    <!-- Кнопки -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -168,7 +168,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:layout_marginEnd="8dp"
-            android:text="Скасувати" />
+            android:text="@string/cancel" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnSave"
@@ -177,6 +177,6 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:layout_marginStart="8dp"
-            android:text="Зберегти" />
+            android:text="@string/save" />
     </LinearLayout>
 </LinearLayout>

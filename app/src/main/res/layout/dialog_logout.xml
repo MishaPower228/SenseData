@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:orientation="vertical"
-    android:layout_width="match_parent"
+    android:layout_width="wrap_content"
     android:layout_height="wrap_content"
     android:background="@drawable/bg_dialog_rounded"
     android:padding="16dp">
@@ -10,7 +10,7 @@
         android:id="@+id/tvLogoutTitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Вийти з облікового запису?"
+        android:text="@string/logout_title"
         android:textStyle="bold"
         android:textSize="18sp"
         android:textColor="@color/weather_card_text"/>
@@ -19,7 +19,7 @@
         android:id="@+id/tvLogoutMsg"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Сеанс буде завершено. Потрібно буде увійти знову."
+        android:text="@string/logout_message"
         android:layout_marginTop="8dp"
         android:textSize="14sp"
         android:textColor="@color/weather_card_text"/>
@@ -36,7 +36,7 @@
             style="@style/Widget.SenseData.Dialog.Filled"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Скасувати"
+            android:text="@string/cancel"
             android:textAllCaps="false"/>
 
         <com.google.android.material.button.MaterialButton
@@ -45,7 +45,7 @@
             android:layout_marginStart="8dp"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Вийти"
+            android:text="@string/logout_action"
             android:textAllCaps="false"/>
     </LinearLayout>
 </LinearLayout>

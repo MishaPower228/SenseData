@@ -10,7 +10,7 @@
         android:id="@+id/tvDeleteTitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Видалити кімнату?"
+        android:text="@string/delete_room_title"
         android:textStyle="bold"
         android:textSize="18sp"
         android:textColor="@color/weather_card_text" />
@@ -19,7 +19,7 @@
         android:id="@+id/tvDeleteMsg"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Це відв'яже пристрій від вашого акаунта."
+        android:text="@string/delete_room_message_short"
         android:textColor="@color/weather_card_text"
         android:layout_marginTop="10dp" />
 
@@ -34,14 +34,14 @@
             android:id="@+id/btnCancel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Скасувати"
+            android:text="@string/cancel"
             style="@style/Widget.SenseData.Dialog.Filled"/>
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnDelete"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Видалити"
+            android:text="@string/delete_action"
             android:layout_marginStart="8dp"
             style="@style/Widget.SenseData.Dialog.Filled" />
     </LinearLayout>

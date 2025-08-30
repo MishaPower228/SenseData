@@ -43,12 +43,12 @@
                     android:layout_height="100dp"
                     android:src="@drawable/ic_user"
                     android:layout_marginBottom="16dp"
-                    android:contentDescription="App Logo" />
+                    android:contentDescription="@string/cd_app_logo" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Вхід"
+                    android:text="@string/login_title"
                     android:textSize="22sp"
                     android:textStyle="bold"
                     android:textColor="@color/weather_card_text"
@@ -58,10 +58,13 @@
                     android:id="@+id/editTextLogin"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Логін"
+                    android:hint="@string/login_username_hint"
                     android:textColorHint="@color/weather_card_text"
                     android:textColor="@color/weather_card_text"
-                    android:inputType="text"
+                    android:inputType="textPersonName|textNoSuggestions"
+                    android:autofillHints="username"
+                    android:imeOptions="actionNext"
+                    android:importantForAutofill="yes"
                     android:background="@drawable/bg_edittext"
                     android:padding="12dp"
                     android:layout_marginBottom="12dp" />
@@ -70,28 +73,31 @@
                     android:id="@+id/editTextPassword"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Пароль"
+                    android:hint="@string/login_password_hint"
                     android:textColorHint="@color/weather_card_text"
                     android:textColor="@color/weather_card_text"
                     android:inputType="textPassword"
+                    android:autofillHints="password"
+                    android:imeOptions="actionDone"
+                    android:importantForAutofill="yes"
                     android:background="@drawable/bg_edittext"
                     android:padding="12dp"
                     android:layout_marginBottom="18dp" />
 
-                <Button
+                <com.google.android.material.button.MaterialButton
                     android:id="@+id/buttonLogin"
-                    android:text="Увійти"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:text="@string/login_action"
                     android:textAllCaps="false"
-                    android:backgroundTint="@color/main_color"
-                    android:textColor="@color/bg_weather_card" />
+                    android:textColor="@color/bg_weather_card"
+                    app:backgroundTint="@color/main_color" />
 
                 <TextView
                     android:id="@+id/textRegister"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Немає акаунту? Зареєструватись"
+                    android:text="@string/no_account_register"
                     android:textColor="@color/main_color"
                     android:textSize="14sp"
                     android:layout_marginTop="16dp"

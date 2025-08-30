@@ -43,13 +43,13 @@
                     android:layout_height="100dp"
                     android:src="@drawable/ic_user"
                     android:layout_marginBottom="16dp"
-                    android:contentDescription="App Logo" />
+                    android:contentDescription="@string/cd_app_logo" />
 
                 <TextView
                     android:id="@+id/registerTitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Реєстрація"
+                    android:text="@string/register_title"
                     android:textSize="22sp"
                     android:textStyle="bold"
                     android:textColor="@color/weather_card_text"
@@ -59,10 +59,13 @@
                     android:id="@+id/editTextUsername"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Ім'я користувача"
+                    android:hint="@string/register_username_hint"
                     android:textColorHint="@color/weather_card_text"
                     android:textColor="@color/weather_card_text"
-                    android:inputType="textPersonName"
+                    android:inputType="textPersonName|textNoSuggestions"
+                    android:autofillHints="username"
+                    android:importantForAutofill="yes"
+                    android:imeOptions="actionNext"
                     android:background="@drawable/bg_edittext"
                     android:padding="12dp" />
 
@@ -70,10 +73,13 @@
                     android:id="@+id/editTextEmail"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Email"
+                    android:hint="@string/register_email_hint"
                     android:textColorHint="@color/weather_card_text"
                     android:textColor="@color/weather_card_text"
                     android:inputType="textEmailAddress"
+                    android:autofillHints="emailAddress"
+                    android:importantForAutofill="yes"
+                    android:imeOptions="actionNext"
                     android:background="@drawable/bg_edittext"
                     android:padding="12dp"
                     android:layout_marginTop="12dp" />
@@ -82,10 +88,13 @@
                     android:id="@+id/editTextPassword"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Пароль"
+                    android:hint="@string/register_password_hint"
                     android:textColorHint="@color/weather_card_text"
                     android:textColor="@color/weather_card_text"
                     android:inputType="textPassword"
+                    android:autofillHints="newPassword"
+                    android:importantForAutofill="yes"
+                    android:imeOptions="actionNext"
                     android:background="@drawable/bg_edittext"
                     android:padding="12dp"
                     android:layout_marginTop="12dp" />
@@ -94,10 +103,13 @@
                     android:id="@+id/editTextConfirmPassword"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Підтвердіть пароль"
+                    android:hint="@string/register_confirm_password_hint"
                     android:textColorHint="@color/weather_card_text"
                     android:textColor="@color/weather_card_text"
                     android:inputType="textPassword"
+                    android:autofillHints="newPassword"
+                    android:importantForAutofill="yes"
+                    android:imeOptions="actionDone"
                     android:background="@drawable/bg_edittext"
                     android:padding="12dp"
                     android:layout_marginTop="12dp" />
@@ -106,28 +118,27 @@
                     android:id="@+id/checkboxShowPassword"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Показати пароль"
+                    android:text="@string/show_password"
                     android:textColor="@color/weather_card_text"
                     android:layout_marginTop="10dp" />
 
-                <Button
+                <com.google.android.material.button.MaterialButton
                     android:id="@+id/buttonRegister"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Зареєструватися"
+                    android:text="@string/register_action"
                     android:textAllCaps="false"
                     android:layout_marginTop="18dp"
-                    android:backgroundTint="@color/main_color"
-                    android:textColor="@color/bg_weather_card" />
+                    android:textColor="@color/bg_weather_card"
+                    app:backgroundTint="@color/main_color" />
 
                 <TextView
                     android:id="@+id/textLoginLink"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Вже є акаунт? Увійти"
+                    android:text="@string/already_have_account_login"
                     android:textColor="@color/main_color"
                     android:layout_marginTop="14dp" />
-
             </LinearLayout>
         </androidx.constraintlayout.widget.ConstraintLayout>
     </androidx.core.widget.NestedScrollView>

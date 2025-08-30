@@ -179,4 +179,7 @@
     </style>
 
     <dimen name="chip_stroke_width">2dp</dimen>
+    <dimen name="dialog_radius">16dp</dimen>
+    <dimen name="dialog_header_height">88dp</dimen>
+    <dimen name="dialog_header_bottom_cut">155dp</dimen>
 </resources>

@@ -1,5 +1,6 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="160dp"
     android:layout_height="wrap_content"
     android:layout_marginEnd="12dp"
@@ -12,7 +13,7 @@
         android:id="@+id/textRoom"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Living Room"
+        tools:text="@string/living_room"
         android:textColor="@color/weather_card_text"
         android:textSize="16sp"
         android:textStyle="bold"
@@ -25,6 +26,7 @@
         android:scaleType="centerCrop"
         android:src="@drawable/livingroom"
         android:layout_marginBottom="8dp"
+        android:contentDescription="@string/cd_room_image"
         app:shapeAppearanceOverlay="@style/RoundedImageView" />
 
     <LinearLayout
@@ -38,7 +40,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="🌡 22°C"
+            tools:text="@string/temp_value_example"
             android:textColor="@color/weather_card_text"
             android:textSize="14sp"
             android:gravity="start" />
@@ -48,10 +50,9 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="💧 45%"
+            tools:text="@string/humi_value_example"
             android:textColor="@color/weather_card_text"
             android:textSize="14sp"
             android:gravity="end" />
     </LinearLayout>
-
 </LinearLayout>

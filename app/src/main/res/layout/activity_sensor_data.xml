@@ -6,7 +6,7 @@
     android:layout_height="match_parent"
     android:background="@color/background_toolbar_color">
 
-    <!-- 🔹 Toolbar -->
+    <!-- Toolbar -->
     <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/toolbar"
         android:layout_width="0dp"
@@ -16,21 +16,21 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:navigationIcon="@drawable/baseline_arrow_back_24"
-        app:navigationIconTint="@color/weather_card_text">
+        app:navigationIconTint="@color/weather_card_text"
+        app:navigationContentDescription="@string/cd_back">
 
-        <!-- 🔹 Тепер заголовок окремим TextView -->
         <TextView
             android:id="@+id/toolbar_title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
-            android:text="Назва кімнати"
+            android:text="@string/room_title"
             android:textColor="@color/weather_card_text"
             android:textSize="18sp"
             android:textStyle="bold"/>
     </com.google.android.material.appbar.MaterialToolbar>
 
-    <!-- 🔹 Прогресбар -->
+    <!-- Прогрес-оверлей -->
     <FrameLayout
         android:id="@+id/progressOverlay"
         android:layout_width="0dp"
@@ -47,13 +47,11 @@
             style="?android:attr/progressBarStyleLarge"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:visibility="gone"
-            app:layout_constraintTop_toBottomOf="@id/toolbar"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent" />
+            android:layout_gravity="center"
+            android:visibility="gone" />
     </FrameLayout>
-    <!-- 🔹 SwipeRefreshLayout -->
+
+    <!-- Контент -->
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
         android:id="@+id/swipeRefreshSensor"
         android:layout_width="0dp"
@@ -75,58 +73,41 @@
                 android:orientation="vertical"
                 android:padding="16dp">
 
-                <!-- 🔹 Основні -->
-                <TextView android:id="@+id/tvTemp"     style="@style/SensorPill" android:text="🌡 Температура: …"/>
-                <TextView android:id="@+id/tvHumi"     style="@style/SensorPill" android:text="💧 Вологість: …"/>
-                <TextView android:id="@+id/tvPressure" style="@style/SensorPill" android:text="🧭 Тиск: …"/>
-                <TextView android:id="@+id/tvAltitude" style="@style/SensorPill" android:text="⛰ Висота: …"/>
-                <TextView android:id="@+id/tvTempBme"  style="@style/SensorPill" android:text="🌡 T(BME): …"/>
-                <TextView android:id="@+id/tvHumiBme"  style="@style/SensorPill" android:text="💧 H(BME): …"/>
+                <!-- Основні -->
+                <TextView android:id="@+id/tvTemp"     style="@style/SensorPill" android:text="@string/sensor_temp_placeholder"/>
+                <TextView android:id="@+id/tvHumi"     style="@style/SensorPill" android:text="@string/sensor_humi_placeholder"/>
+                <TextView android:id="@+id/tvPressure" style="@style/SensorPill" android:text="@string/sensor_pressure_placeholder"/>
+                <TextView android:id="@+id/tvAltitude" style="@style/SensorPill" android:text="@string/sensor_altitude_placeholder"/>
+                <TextView android:id="@+id/tvTempBme"  style="@style/SensorPill" android:text="@string/sensor_temp_bme_placeholder"/>
+                <TextView android:id="@+id/tvHumiBme"  style="@style/SensorPill" android:text="@string/sensor_humi_bme_placeholder"/>
 
-                <!-- 🔹 Газ -->
                 <!-- Газ -->
-                <TextView
-                    android:id="@+id/tvGas"
-                    style="@style/SensorPill"
-                    android:text="🔥 Газ (детект): …" />
-
-                <TextView
-                    android:id="@+id/tvGasAnalog"
-                    style="@style/SensorPill"
-                    android:text="🔥 Газ (аналог, %): …" />
+                <TextView android:id="@+id/tvGas"        style="@style/SensorPill" android:text="@string/sensor_gas_detect_placeholder"/>
+                <TextView android:id="@+id/tvGasAnalog"   style="@style/SensorPill" android:text="@string/sensor_gas_analog_placeholder"/>
 
                 <!-- Світло -->
-                <TextView
-                    android:id="@+id/tvLight"
-                    style="@style/SensorPill"
-                    android:text="💡 Світло (детект): …" />
+                <TextView android:id="@+id/tvLight"       style="@style/SensorPill" android:text="@string/sensor_light_detect_placeholder"/>
+                <TextView android:id="@+id/tvLightAnalog"  style="@style/SensorPill" android:text="@string/sensor_light_analog_placeholder"/>
 
-                <TextView
-                    android:id="@+id/tvLightAnalog"
-                    style="@style/SensorPill"
-                    android:text="💡 Світло (аналог, %): …" />
-
-                <!-- 🔹 Divider -->
                 <View
                     android:layout_width="match_parent"
                     android:layout_height="8dp"
                     android:layout_marginTop="8dp"
                     android:background="@android:color/transparent" />
 
-                <!-- 🔹 Рекомендації -->
+                <!-- Рекомендації -->
                 <TextView
                     android:id="@+id/tvAdviceTitle"
                     style="@style/SensorPill"
-                    android:text="🧠 Рекомендації"
+                    android:text="@string/advice_title"
                     android:textStyle="bold" />
 
                 <TextView
                     android:id="@+id/tvAdvice"
                     style="@style/SensorPill"
-                    android:text="—"
+                    android:text="@string/advice_empty"
                     android:maxLines="6"
                     android:ellipsize="end" />
-
             </LinearLayout>
         </ScrollView>
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>

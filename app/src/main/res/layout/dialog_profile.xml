@@ -1,16 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:orientation="vertical"
-    android:layout_width="match_parent"
+    android:layout_width="wrap_content"
     android:layout_height="wrap_content"
-    android:background="@drawable/bg_dialog_rounded">
+    android:background="@drawable/bg_profile">
 
-    <!-- Верхній синій хедер як у тулбарі -->
-    <androidx.constraintlayout.widget.ConstraintLayout
+    <!-- Хедер (прозорий контейнер; синій малює бекграунд) -->
+    <LinearLayout
+        android:id="@+id/headerContent"
         android:layout_width="match_parent"
-        android:layout_height="88dp"
-        android:background="@drawable/bg_profile_header"
+        android:layout_height="@dimen/dialog_header_height"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
         android:paddingStart="16dp"
         android:paddingEnd="16dp">
 
@@ -18,102 +21,70 @@
             android:id="@+id/imgAvatar"
             android:layout_width="56dp"
             android:layout_height="56dp"
-            android:contentDescription="@string/user"
             android:src="@drawable/ic_account"
+            android:contentDescription="@string/cd_user_avatar" />
 
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintBottom_toBottomOf="parent"/>
-
-        <TextView
-            android:id="@+id/tvUsername"
+        <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:text="Привіт, user"
-            android:textStyle="bold"
-            android:textSize="18sp"
-            android:textColor="@android:color/white"
-            app:layout_constraintStart_toEndOf="@id/imgAvatar"
-            app:layout_constraintTop_toTopOf="@id/imgAvatar"
-            app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginStart="12dp"/>
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:layout_marginStart="12dp">
 
-        <TextView
-            android:id="@+id/tvSubtitle"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:text="Профіль облікового запису"
-            android:textSize="13sp"
-            android:textColor="#E6FFFFFF"
-            app:layout_constraintStart_toStartOf="@id/tvUsername"
-            app:layout_constraintTop_toBottomOf="@id/tvUsername"
-            app:layout_constraintEnd_toEndOf="parent"/>
-    </androidx.constraintlayout.widget.ConstraintLayout>
+            <TextView
+                android:id="@+id/tvUsername"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="@android:color/white"
+                android:textStyle="bold"
+                android:textSize="18sp"
+                tools:text="Привіт, user" />
 
-    <!-- Контент -->
+            <TextView
+                android:id="@+id/tvSubtitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="@string/profile_subtitle"
+                android:textSize="13sp"
+                android:textColor="#E6FFFFFF" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Тіло діалога -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:padding="16dp">
 
-        <!-- ID -->
-        <LinearLayout
+        <TextView
+            android:id="@+id/tvUserId"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
+            android:text="@string/profile_id_placeholder"
+            android:textColor="@color/weather_card_text"
+            android:textSize="15sp"
+            android:drawablePadding="10dp"
             android:paddingTop="6dp"
-            android:paddingBottom="6dp">
+            android:paddingBottom="6dp"
+            app:drawableStartCompat="@drawable/ic_settings" />
 
-            <ImageView
-                android:layout_width="20dp"
-                android:layout_height="20dp"
-                android:src="@drawable/ic_settings"
-                android:contentDescription="@string/app_name"/>
-
-            <TextView
-                android:id="@+id/tvUserId"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:paddingStart="10dp"
-                android:text="ID: —"
-                android:textColor="@color/weather_card_text"
-                android:textSize="15sp"/>
-        </LinearLayout>
-
-        <!-- Server -->
-        <LinearLayout
+        <TextView
+            android:id="@+id/tvServer"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
+            android:text="@string/profile_server_placeholder"
+            android:textColor="@color/weather_card_text"
+            android:textSize="15sp"
+            android:drawablePadding="10dp"
             android:paddingTop="6dp"
-            android:paddingBottom="6dp">
+            android:paddingBottom="6dp"
+            app:drawableStartCompat="@drawable/ic_settings" />
 
-            <ImageView
-                android:layout_width="20dp"
-                android:layout_height="20dp"
-                android:src="@drawable/ic_settings"
-                android:contentDescription="@string/app_name"/>
-
-            <TextView
-                android:id="@+id/tvServer"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:paddingStart="10dp"
-                android:text="Сервер: —"
-                android:textColor="@color/weather_card_text"
-                android:textSize="15sp"/>
-        </LinearLayout>
-
-        <!-- Кнопки -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -126,16 +97,16 @@
                 style="@style/Widget.SenseData.Dialog.Filled"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Закрити"
+                android:text="@string/close"
                 android:textAllCaps="false"/>
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnLogout"
                 style="@style/Widget.SenseData.Dialog.Filled"
-                android:layout_marginStart="8dp"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Вийти"
+                android:layout_marginStart="8dp"
+                android:text="@string/logout_action"
                 android:textAllCaps="false"/>
         </LinearLayout>
     </LinearLayout>

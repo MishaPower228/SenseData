@@ -17,7 +17,7 @@
             android:id="@+id/titleWifi"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Wi-Fi налаштування"
+            android:text="@string/wifi_setup_title"
             android:textStyle="bold"
             android:textSize="18sp"
             android:textColor="@color/weather_card_text"
@@ -28,9 +28,12 @@
             android:id="@+id/etSsid"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:hint="SSID"
-            android:inputType="text"
+            android:hint="@string/wifi_ssid_hint"
+            android:inputType="textNoSuggestions"
             android:maxLines="1"
+            android:autofillHints="username"
+            android:importantForAutofill="yes"
+            android:imeOptions="actionNext"
             android:background="@drawable/bg_weather_label"
             android:textColor="@color/weather_card_text"
             android:textColorHint="@color/weather_card_text"
@@ -44,9 +47,12 @@
             android:id="@+id/etPass"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:hint="Пароль"
+            android:hint="@string/wifi_password_hint"
             android:inputType="textPassword"
             android:maxLines="1"
+            android:autofillHints="password"
+            android:importantForAutofill="yes"
+            android:imeOptions="actionDone"
             android:background="@drawable/bg_weather_label"
             android:textColor="@color/weather_card_text"
             android:textColorHint="@color/weather_card_text"
@@ -82,7 +88,7 @@
             app:layout_constraintBottom_toBottomOf="@id/tvWifiStatus"
             app:layout_constraintEnd_toEndOf="parent"/>
 
-        <!-- КАСТОМНІ КНОПКИ -->
+        <!-- Кнопки -->
         <LinearLayout
             android:id="@+id/btnBar"
             android:layout_width="0dp"
@@ -96,18 +102,18 @@
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnCancel"
+                style="@style/Widget.SenseData.Dialog.Filled"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Скасувати"
-                style="@style/Widget.SenseData.Dialog.Filled"/>
+                android:text="@string/cancel"/>
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnSend"
+                style="@style/Widget.SenseData.Dialog.Filled"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Надіслати"
                 android:layout_marginStart="8dp"
-                style="@style/Widget.SenseData.Dialog.Filled" />
+                android:text="@string/send"/>
         </LinearLayout>
 
     </androidx.constraintlayout.widget.ConstraintLayout>

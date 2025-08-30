@@ -2,314 +2,324 @@
 <com.google.android.material.card.MaterialCardView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/pageCard"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     app:cardPreventCornerOverlap="true"
     app:cardBackgroundColor="@color/background_toolbar_color">
 
-        <!-- Скрол всередині картки, щоб нічого не «сплющувалося» -->
-        <androidx.core.widget.NestedScrollView
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:fillViewport="true">
+    <!-- Скрол всередині картки, щоб нічого не «сплющувалося» -->
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true">
 
-            <!-- Вміст сторінки -->
+        <!-- Вміст сторінки -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="24dp"
+            android:gravity="center_horizontal">
+
+            <!-- Верхня панель -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="8dp">
+
+                <!-- опціонально: можна видалити і користуватись системним Back -->
+                <ImageButton
+                    android:id="@+id/btnBack"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/cd_navigate_back"
+                    android:src="@drawable/baseline_arrow_back_24"/>
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/create_room"
+                    android:textSize="22sp"
+                    android:textStyle="bold"
+                    android:gravity="center"
+                    android:textColor="@color/weather_card_text"/>
+            </LinearLayout>
+
+            <!-- Назва кімнати -->
+            <EditText
+                android:id="@+id/editRoomName"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/room_name_hint"
+                android:textColorHint="@color/weather_card_text"
+                android:textColor="@color/weather_card_text"
+                android:inputType="textCapWords"
+                android:autofillHints="name"
+                android:background="@drawable/bg_edittext"
+                android:padding="12dp"
+                android:layout_marginBottom="16dp" />
+
+            <!-- Лейбл вибору зображення -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/select_image"
+                android:textColor="@color/weather_card_text"
+                android:background="@drawable/bg_weather_label"
+                android:paddingHorizontal="10dp"
+                android:paddingVertical="6dp"
+                android:layout_marginBottom="8dp" />
+
+            <!-- Сітка зображень -->
+            <GridLayout
+                android:id="@+id/imageSelectionGrid"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:columnCount="3"
+                android:rowCount="2"
+                android:alignmentMode="alignMargins"
+                android:columnOrderPreserved="false"
+                android:useDefaultMargins="true"
+                android:gravity="center_horizontal"
+                android:layout_marginBottom="16dp">
+
+                <!-- Living room -->
+                <FrameLayout
+                    android:id="@+id/container1"
+                    android:layout_width="0dp"
+                    android:layout_height="100dp"
+                    android:layout_columnWeight="1"
+                    android:layout_rowWeight="1"
+                    android:layout_gravity="fill"
+                    android:background="@drawable/bg_image_selector">
+
+                    <ImageView
+                        android:id="@+id/img1"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:scaleType="centerCrop"
+                        android:src="@drawable/livingroom"
+                        android:background="@drawable/bg_rounded_image"
+                        android:clipToOutline="true"
+                        tools:targetApi="31"
+                        android:contentDescription="@string/living_room"
+                        android:tag="livingroom" />
+                </FrameLayout>
+
+                <!-- Kitchen -->
+                <FrameLayout
+                    android:id="@+id/container2"
+                    android:layout_width="0dp"
+                    android:layout_height="100dp"
+                    android:layout_columnWeight="1"
+                    android:layout_rowWeight="1"
+                    android:layout_gravity="fill"
+                    android:background="@drawable/bg_image_selector">
+
+                    <ImageView
+                        android:id="@+id/img2"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:scaleType="centerCrop"
+                        android:src="@drawable/kitchen"
+                        android:background="@drawable/bg_rounded_image"
+                        android:clipToOutline="true"
+                        tools:targetApi="31"
+                        android:contentDescription="@string/kitchen"
+                        android:tag="kitchen" />
+                </FrameLayout>
+
+                <!-- Home office -->
+                <FrameLayout
+                    android:id="@+id/container3"
+                    android:layout_width="0dp"
+                    android:layout_height="100dp"
+                    android:layout_columnWeight="1"
+                    android:layout_rowWeight="1"
+                    android:layout_gravity="fill"
+                    android:background="@drawable/bg_image_selector">
+
+                    <ImageView
+                        android:id="@+id/img3"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:scaleType="centerCrop"
+                        android:src="@drawable/homeoffice"
+                        android:background="@drawable/bg_rounded_image"
+                        android:clipToOutline="true"
+                        tools:targetApi="31"
+                        android:contentDescription="@string/home_office"
+                        android:tag="homeoffice" />
+                </FrameLayout>
+
+                <!-- Bathroom -->
+                <FrameLayout
+                    android:id="@+id/container4"
+                    android:layout_width="0dp"
+                    android:layout_height="100dp"
+                    android:layout_columnWeight="1"
+                    android:layout_rowWeight="1"
+                    android:layout_gravity="fill"
+                    android:background="@drawable/bg_image_selector">
+
+                    <ImageView
+                        android:id="@+id/img4"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:scaleType="centerCrop"
+                        android:src="@drawable/bathroom"
+                        android:background="@drawable/bg_rounded_image"
+                        android:clipToOutline="true"
+                        tools:targetApi="31"
+                        android:contentDescription="@string/bathroom"
+                        android:tag="bathroom" />
+                </FrameLayout>
+
+                <!-- Bedroom -->
+                <FrameLayout
+                    android:id="@+id/container5"
+                    android:layout_width="0dp"
+                    android:layout_height="100dp"
+                    android:layout_columnWeight="1"
+                    android:layout_rowWeight="1"
+                    android:layout_gravity="fill"
+                    android:background="@drawable/bg_image_selector">
+
+                    <ImageView
+                        android:id="@+id/img5"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:scaleType="centerCrop"
+                        android:src="@drawable/bedroom"
+                        android:background="@drawable/bg_rounded_image"
+                        android:clipToOutline="true"
+                        tools:targetApi="31"
+                        android:contentDescription="@string/bedroom"
+                        android:tag="bedroom" />
+                </FrameLayout>
+
+                <!-- Extra (балкон / інше) -->
+                <FrameLayout
+                    android:id="@+id/container6"
+                    android:layout_width="0dp"
+                    android:layout_height="100dp"
+                    android:layout_columnWeight="1"
+                    android:layout_rowWeight="1"
+                    android:layout_gravity="fill"
+                    android:background="@drawable/bg_image_selector">
+
+                    <ImageView
+                        android:id="@+id/img6"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:scaleType="centerCrop"
+                        android:src="@drawable/balkon"
+                        android:background="@drawable/bg_rounded_image"
+                        android:clipToOutline="true"
+                        tools:targetApi="31"
+                        android:contentDescription="@string/balkon"
+                        android:tag="balkon" />
+                </FrameLayout>
+
+            </GridLayout>
+
+            <!-- Блок Wi-Fi -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="24dp"
-                android:gravity="center_horizontal">
+                android:background="@drawable/bg_wifi_block"
+                android:padding="16dp"
+                android:layout_marginBottom="16dp">
 
-                <!-- Верхня панель -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:layout_marginBottom="8dp">
-
-                    <!-- опціонально: можна видалити і користуватись системним Back -->
-                    <ImageButton
-                        android:id="@+id/btnBack"
-                        android:layout_width="40dp"
-                        android:layout_height="40dp"
-                        android:background="?attr/selectableItemBackgroundBorderless"
-                        android:contentDescription="arrow"
-                        android:src="@drawable/baseline_arrow_back_24"/>
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Створити кімнату"
-                        android:textSize="22sp"
-                        android:textStyle="bold"
-                        android:gravity="center"
-                        android:textColor="@color/weather_card_text"/>
-                </LinearLayout>
-
-                <!-- Назва кімнати -->
-                <EditText
-                    android:id="@+id/editRoomName"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:hint="Назва кімнати"
-                    android:textColorHint="@color/weather_card_text"
-                    android:textColor="@color/weather_card_text"
-                    android:inputType="textCapWords"
-                    android:background="@drawable/bg_edittext"
-                    android:padding="12dp"
-                    android:layout_marginBottom="16dp" />
-
-                <!-- Лейбл вибору зображення -->
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Оберіть зображення"
+                    android:text="@string/wifi_settings"
                     android:textColor="@color/weather_card_text"
+                    android:textSize="16sp"
+                    android:layout_marginBottom="10dp"
                     android:background="@drawable/bg_weather_label"
                     android:paddingHorizontal="10dp"
-                    android:paddingVertical="6dp"
-                    android:layout_marginBottom="8dp" />
+                    android:paddingVertical="6dp"/>
 
-                <!-- Сітка зображень -->
-                <GridLayout
-                    android:id="@+id/imageSelectionGrid"
+                <EditText
+                    android:id="@+id/editSsid"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:columnCount="3"
-                    android:rowCount="2"
-                    android:alignmentMode="alignMargins"
-                    android:columnOrderPreserved="false"
-                    android:useDefaultMargins="true"
-                    android:gravity="center_horizontal"
-                    android:layout_marginBottom="16dp">
+                    android:hint="@string/wifi_ssid"
+                    android:textColorHint="@color/weather_card_text"
+                    android:textColor="@color/weather_card_text"
+                    android:inputType="textNoSuggestions"
+                    android:autofillHints="username"
+                    android:background="@drawable/bg_edittext"
+                    android:padding="12dp"
+                    android:layout_marginBottom="10dp" />
 
-                    <!-- Living room -->
-                    <FrameLayout
-                        android:id="@+id/container1"
-                        android:layout_width="0dp"
-                        android:layout_height="100dp"
-                        android:layout_columnWeight="1"
-                        android:layout_rowWeight="1"
-                        android:layout_gravity="fill"
-                        android:background="@drawable/bg_image_selector">
-
-                        <ImageView
-                            android:id="@+id/img1"
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent"
-                            android:scaleType="centerCrop"
-                            android:src="@drawable/livingroom"
-                            android:background="@drawable/bg_rounded_image"
-                            android:clipToOutline="true"
-                            android:contentDescription="Living Room"
-                            android:tag="livingroom" />
-                    </FrameLayout>
-
-                    <!-- Kitchen -->
-                    <FrameLayout
-                        android:id="@+id/container2"
-                        android:layout_width="0dp"
-                        android:layout_height="100dp"
-                        android:layout_columnWeight="1"
-                        android:layout_rowWeight="1"
-                        android:layout_gravity="fill"
-                        android:background="@drawable/bg_image_selector">
-
-                        <ImageView
-                            android:id="@+id/img2"
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent"
-                            android:scaleType="centerCrop"
-                            android:src="@drawable/kitchen"
-                            android:background="@drawable/bg_rounded_image"
-                            android:clipToOutline="true"
-                            android:contentDescription="Kitchen"
-                            android:tag="kitchen" />
-                    </FrameLayout>
-
-                    <!-- Home office -->
-                    <FrameLayout
-                        android:id="@+id/container3"
-                        android:layout_width="0dp"
-                        android:layout_height="100dp"
-                        android:layout_columnWeight="1"
-                        android:layout_rowWeight="1"
-                        android:layout_gravity="fill"
-                        android:background="@drawable/bg_image_selector">
-
-                        <ImageView
-                            android:id="@+id/img3"
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent"
-                            android:scaleType="centerCrop"
-                            android:src="@drawable/homeoffice"
-                            android:background="@drawable/bg_rounded_image"
-                            android:clipToOutline="true"
-                            android:contentDescription="Home Office"
-                            android:tag="homeoffice" />
-                    </FrameLayout>
-
-                    <!-- Bathroom -->
-                    <FrameLayout
-                        android:id="@+id/container4"
-                        android:layout_width="0dp"
-                        android:layout_height="100dp"
-                        android:layout_columnWeight="1"
-                        android:layout_rowWeight="1"
-                        android:layout_gravity="fill"
-                        android:background="@drawable/bg_image_selector">
-
-                        <ImageView
-                            android:id="@+id/img4"
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent"
-                            android:scaleType="centerCrop"
-                            android:src="@drawable/bathroom"
-                            android:background="@drawable/bg_rounded_image"
-                            android:clipToOutline="true"
-                            android:contentDescription="Bathroom"
-                            android:tag="bathroom" />
-                    </FrameLayout>
-
-                    <!-- Bedroom -->
-                    <FrameLayout
-                        android:id="@+id/container5"
-                        android:layout_width="0dp"
-                        android:layout_height="100dp"
-                        android:layout_columnWeight="1"
-                        android:layout_rowWeight="1"
-                        android:layout_gravity="fill"
-                        android:background="@drawable/bg_image_selector">
-
-                        <ImageView
-                            android:id="@+id/img5"
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent"
-                            android:scaleType="centerCrop"
-                            android:src="@drawable/bedroom"
-                            android:background="@drawable/bg_rounded_image"
-                            android:clipToOutline="true"
-                            android:contentDescription="Bedroom"
-                            android:tag="bedroom" />
-                    </FrameLayout>
-
-                    <!-- Extra (балкон / інше) -->
-                    <FrameLayout
-                        android:id="@+id/container6"
-                        android:layout_width="0dp"
-                        android:layout_height="100dp"
-                        android:layout_columnWeight="1"
-                        android:layout_rowWeight="1"
-                        android:layout_gravity="fill"
-                        android:background="@drawable/bg_image_selector">
-
-                        <ImageView
-                            android:id="@+id/img6"
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent"
-                            android:scaleType="centerCrop"
-                            android:src="@drawable/balkon"
-                            android:background="@drawable/bg_rounded_image"
-                            android:clipToOutline="true"
-                            android:contentDescription="Balkon"
-                            android:tag="balkon" />
-                    </FrameLayout>
-
-                </GridLayout>
-
-
-                <!-- Блок Wi-Fi -->
-                <LinearLayout
+                <EditText
+                    android:id="@+id/editPassword"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:background="@drawable/bg_wifi_block"
-                    android:padding="16dp"
-                    android:layout_marginBottom="16dp">
+                    android:hint="@string/wifi_password"
+                    android:textColorHint="@color/weather_card_text"
+                    android:textColor="@color/weather_card_text"
+                    android:inputType="textPassword"
+                    android:autofillHints="password"
+                    android:background="@drawable/bg_edittext"
+                    android:padding="12dp" />
+            </LinearLayout>
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Налаштування Wi-Fi"
-                        android:textColor="@color/weather_card_text"
-                        android:textSize="16sp"
-                        android:layout_marginBottom="10dp"
-                        android:background="@drawable/bg_weather_label"
-                        android:paddingHorizontal="10dp"
-                        android:paddingVertical="6dp"/>
+            <!-- Сканування -->
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp">
 
-                    <EditText
-                        android:id="@+id/editSsid"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:hint="Wi-Fi SSID"
-                        android:textColorHint="@color/weather_card_text"
-                        android:textColor="@color/weather_card_text"
-                        android:inputType="text"
-                        android:background="@drawable/bg_edittext"
-                        android:padding="12dp"
-                        android:layout_marginBottom="10dp" />
-
-                    <EditText
-                        android:id="@+id/editPassword"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:hint="Wi-Fi Пароль"
-                        android:textColorHint="@color/weather_card_text"
-                        android:textColor="@color/weather_card_text"
-                        android:inputType="textPassword"
-                        android:background="@drawable/bg_edittext"
-                        android:padding="12dp" />
-                </LinearLayout>
-
-                <!-- Сканування -->
-                <FrameLayout
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnScanBle"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="12dp">
+                    android:layout_height="48dp"
+                    android:text="@string/scan_esp32"
+                    android:textAllCaps="false"
+                    android:textColor="@color/bg_weather_card"
+                    app:backgroundTint="@color/main_color"
+                    app:cornerRadius="24dp"
+                    app:iconGravity="textStart"
+                    app:iconPadding="10dp"
+                    app:iconTint="@color/bg_weather_card"/>
 
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnScanBle"
-                        android:layout_width="match_parent"
-                        android:layout_height="48dp"
-                        android:text="Сканувати ESP32"
-                        android:textAllCaps="false"
-                        android:textColor="@color/bg_weather_card"
-                        app:backgroundTint="@color/main_color"
-                        app:cornerRadius="24dp"
-                        app:iconGravity="textStart"
-                        app:iconPadding="10dp"
-                        app:iconTint="@color/bg_weather_card"/>
+                <com.google.android.material.progressindicator.CircularProgressIndicator
+                    android:id="@+id/progressScan"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="end|center_vertical"
+                    android:layout_marginEnd="12dp"
+                    android:visibility="gone"
+                    app:indicatorSize="24dp"
+                    app:trackThickness="3dp" />
+            </FrameLayout>
 
-                    <com.google.android.material.progressindicator.CircularProgressIndicator
-                        android:id="@+id/progressScan"
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:layout_gravity="end|center_vertical"
-                        android:layout_marginEnd="12dp"
-                        android:visibility="gone"
-                        app:indicatorSize="24dp"
-                        app:trackThickness="3dp" />
-                </FrameLayout>
-                <!-- ⬇️ Material Exposed Dropdown замість Spinner -->
-                <com.google.android.material.textfield.TextInputLayout
-                    android:id="@android:id/text1"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    app:hintEnabled="false"
-                    style="@style/Widget.Material3.TextInputLayout.FilledBox.Dense"
-                    app:endIconMode="dropdown_menu"
-                    app:endIconTint="@color/weather_card_text"
-                    app:boxBackgroundColor="@color/background_toolbar_color"
-                    app:shapeAppearance="@style/Shape.Rounded16"
-                    app:boxStrokeColor="@drawable/box_stroke_devices"
-                    app:boxStrokeWidth="0dp"
-                    app:boxStrokeWidthFocused="1dp"
-                    android:layout_marginBottom="12dp">
+            <!-- ⬇️ Material Exposed Dropdown замість Spinner -->
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@android:id/text1"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:hintEnabled="false"
+                style="@style/Widget.Material3.TextInputLayout.FilledBox.Dense"
+                app:endIconMode="dropdown_menu"
+                app:endIconTint="@color/weather_card_text"
+                app:boxBackgroundColor="@color/background_toolbar_color"
+                app:shapeAppearance="@style/Shape.Rounded16"
+                app:boxStrokeColor="@drawable/box_stroke_devices"
+                app:boxStrokeWidth="0dp"
+                app:boxStrokeWidthFocused="1dp"
+                android:layout_marginBottom="12dp">
 
                 <com.google.android.material.textfield.MaterialAutoCompleteTextView
                     android:id="@+id/dropdownDevices"
@@ -320,7 +330,7 @@
                     android:paddingVertical="14dp"
                     android:paddingHorizontal="16dp"
                     android:textSize="16sp"
-                    android:hint="Оберіть плату ESP32"
+                    android:hint="@string/select_esp32"
                     android:textColorHint="@color/weather_card_text"
                     android:textColor="@color/weather_card_text"
                     android:textCursorDrawable="@null"
@@ -328,51 +338,52 @@
                     android:dropDownHorizontalOffset="8dp" />
             </com.google.android.material.textfield.TextInputLayout>
 
-                <com.google.android.material.checkbox.MaterialCheckBox
-                    android:id="@+id/checkboxReset"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Скинути пристрій перед збереженням"
-                    android:textSize="16sp"
-                    android:textColor="@color/weather_card_text"
-                    android:buttonTint="@color/weather_card_text"
-                    android:layout_marginBottom="12dp"/>
+            <com.google.android.material.checkbox.MaterialCheckBox
+                android:id="@+id/checkboxReset"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/reset_before_save"
+                android:textSize="16sp"
+                android:textColor="@color/weather_card_text"
+                android:buttonTint="@color/weather_card_text"
+                android:layout_marginBottom="12dp"/>
 
-                <!-- Кнопки -->
-                <LinearLayout
-                    android:id="@+id/dialogButtonsLayout"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center"
-                    android:layout_marginTop="8dp">
+            <!-- Кнопки -->
+            <LinearLayout
+                android:id="@+id/dialogButtonsLayout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:layout_marginTop="8dp">
 
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnCancel"
-                        android:layout_width="0dp"
-                        android:layout_height="48dp"
-                        android:layout_weight="1"
-                        android:text="Скасувати"
-                        android:textAllCaps="false"
-                        app:cornerRadius="24dp"
-                        app:strokeColor="@color/main_color"
-                        app:strokeWidth="2dp"
-                        app:backgroundTint="@android:color/transparent"
-                        android:textColor="@color/main_color"
-                        android:layout_marginEnd="8dp"/>
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnCancel"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1"
+                    android:text="@string/cancel"
+                    android:textAllCaps="false"
+                    app:cornerRadius="24dp"
+                    app:strokeColor="@color/main_color"
+                    app:strokeWidth="2dp"
+                    app:backgroundTint="@android:color/transparent"
+                    android:textColor="@color/main_color"
+                    android:layout_marginEnd="8dp"/>
 
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnCreate"
-                        android:layout_width="0dp"
-                        android:layout_height="48dp"
-                        android:layout_weight="1"
-                        android:text="Створити"
-                        android:textAllCaps="false"
-                        app:cornerRadius="24dp"
-                        app:backgroundTint="@color/main_color"
-                        android:textColor="@color/bg_weather_card"
-                        android:layout_marginStart="8dp"/>
-                </LinearLayout>
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnCreate"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1"
+                    android:text="@string/create"
+                    android:textAllCaps="false"
+                    app:cornerRadius="24dp"
+                    app:backgroundTint="@color/main_color"
+                    android:textColor="@color/bg_weather_card"
+                    android:layout_marginStart="8dp"/>
             </LinearLayout>
-        </androidx.core.widget.NestedScrollView>
-    </com.google.android.material.card.MaterialCardView>
+
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+</com.google.android.material.card.MaterialCardView>
