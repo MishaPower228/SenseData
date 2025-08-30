@@ -15,6 +15,8 @@ import androidx.core.view.WindowInsetsControllerCompat;
 
 public abstract class ImmersiveActivity extends AppCompatActivity {
 
+    private static final int BASE_MARGIN_DP = 16;
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -51,16 +53,6 @@ public abstract class ImmersiveActivity extends AppCompatActivity {
         }
     }
 
-    protected void exitImmersive() {
-        View decor = getWindow().getDecorView();
-        if (Build.VERSION.SDK_INT >= 30) {
-            new WindowInsetsControllerCompat(getWindow(), decor)
-                    .show(WindowInsetsCompat.Type.systemBars());
-        } else {
-            decor.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
-        }
-    }
-
     /** Підкладає системні (status/nav) та IME (клавіатура) інсети в ПАДІНГ кореня */
     protected void applyImePadding(View root) {
         ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
@@ -80,14 +72,16 @@ public abstract class ImmersiveActivity extends AppCompatActivity {
             int bottom = Math.max(sys.bottom, ime.bottom);
 
             ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams) v.getLayoutParams();
-            lp.bottomMargin = bottom + dp(16); // базовий відступ + висота клавіатури/жестів
+            lp.bottomMargin = bottom + dp(BASE_MARGIN_DP);
             v.setLayoutParams(lp);
             v.requestLayout();
             return insets;
         });
     }
 
-    protected int dp(int v) {
-        return (int) (v * getResources().getDisplayMetrics().density);
+    /** Конвертація dp -> px */
+    @SuppressWarnings("SameParameterValue")
+    protected int dp(int valueDp) {
+        return Math.round(valueDp * getResources().getDisplayMetrics().density);
     }
 }

@@ -33,13 +33,13 @@
 
         <!-- 🔹 Логін -->
         <activity
-            android:name=".user.LoginActivity"
+            android:name=".activity.LoginActivity"
             android:screenOrientation="portrait"
             android:exported="true" />
 
         <!-- 🔹 Реєстрація (точка входу додатку) -->
         <activity
-            android:name=".user.RegisterActivity"
+            android:name=".activity.RegisterActivity"
             android:screenOrientation="portrait"
             android:exported="true">
             <intent-filter>

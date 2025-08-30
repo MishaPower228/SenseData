@@ -3,7 +3,15 @@ package com.example.sensedata.activity;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
-import android.bluetooth.*;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothGatt;
+import android.bluetooth.BluetoothGattCallback;
+import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.BluetoothGattDescriptor;
+import android.bluetooth.BluetoothGattService;
+import android.bluetooth.BluetoothManager;
+import android.bluetooth.BluetoothProfile;
 import android.bluetooth.le.BluetoothLeScanner;
 import android.bluetooth.le.ScanCallback;
 import android.bluetooth.le.ScanResult;
@@ -27,23 +35,19 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.crypto.Cipher;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
-/**
- * Production-ready BLE менеджер з:
- * - керованими таймаутами/логами через Config
- * - захистом від витоків BroadcastReceiver
- * - синхронізованим закриттям GATT
- * - ретраями та бондингом
- * - опційним AES-шифруванням пароля в JSON
- *
- * Публічний API сумісний із попередньою версією.
- */
 public class BleActivity {
 
     // ---------- Публічні колбеки ----------
@@ -64,9 +68,7 @@ public class BleActivity {
         public int notifyTimeoutMs = 10000;
 
         public boolean encryptJsonPassword = true;
-        /** 16 байт для AES-128. Якщо null → використається дефолтний ключ. */
         @Nullable public byte[] aesKey16 = "my-secret-key-12".getBytes(StandardCharsets.UTF_8);
-        /** 16 байт IV. Якщо null → нулі. */
         @Nullable public byte[] aesIv16 = null;
     }
 
@@ -75,6 +77,10 @@ public class BleActivity {
     private static final UUID CCCD_UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
     private static final int GATT_INSUFFICIENT_AUTHENTICATION = 5;
     private static final int GATT_INSUFFICIENT_ENCRYPTION     = 15;
+
+    // API-31 permission names як рядки (щоб не ловити lint на старих SDK)
+    private static final String PERM_BT_SCAN    = "android.permission.BLUETOOTH_SCAN";
+    private static final String PERM_BT_CONNECT = "android.permission.BLUETOOTH_CONNECT";
 
     // ---------- Системні об’єкти ----------
     private final Context appCtx;
@@ -96,16 +102,15 @@ public class BleActivity {
     private final Object gattLock = new Object();
 
     // ---------- Таймаути ----------
-    private final Runnable writeTimeout = this::onWriteTimeout;
+    private final Runnable writeTimeout  = this::onWriteTimeout;
     private final Runnable notifyTimeout = this::onNotifyTimeout;
 
-    // ---------- Стани Wi-Fi патчу / конфігу ----------
+    // ---------- Стани ----------
     @Nullable private WifiPatchCallback wifiCallback;
-    private volatile boolean writeInFlight = false;
     private volatile boolean writeSucceeded = false;
     private volatile boolean pWifiOnly = false;
 
-    private String pRoomName, pImageName, pSsid, pPassword, pUsername;
+    private String  pRoomName, pImageName, pSsid, pPassword, pUsername;
     private boolean pReset;
 
     // ---------- ChipId ----------
@@ -140,40 +145,33 @@ public class BleActivity {
     };
 
     // ---------- Конструктори ----------
-    public BleActivity(Context context) {
-        this(context, new Config());
-    }
+    public BleActivity(Context context) { this(context, new Config()); }
 
     public BleActivity(Context context, Config config) {
         this.appCtx = context.getApplicationContext();
         this.cfg = (config != null) ? config : new Config();
         BluetoothManager bm = (BluetoothManager) appCtx.getSystemService(Context.BLUETOOTH_SERVICE);
-        this.btAdapter = (bm != null) ? bm.getAdapter() : null;
-        this.btScanner = (btAdapter != null) ? btAdapter.getBluetoothLeScanner() : null;
+        this.btAdapter  = (bm != null) ? bm.getAdapter() : null;
+        this.btScanner  = (btAdapter != null) ? btAdapter.getBluetoothLeScanner() : null;
     }
 
     // ---------- Перевірки/допоміжні ----------
-    public boolean isBluetoothSupported() { return btAdapter != null; }
-    public boolean isBluetoothEnabled() { return btAdapter != null && btAdapter.isEnabled(); }
+    public boolean isBluetoothSupported() { return btAdapter == null; }
+    public boolean isBluetoothEnabled()  { return btAdapter == null || !btAdapter.isEnabled(); }
 
     public boolean hasAllBlePermissions() {
         if (Build.VERSION.SDK_INT >= 31) {
-            return has(Manifest.permission.BLUETOOTH_SCAN) && has(Manifest.permission.BLUETOOTH_CONNECT);
+            return !has(PERM_BT_SCAN) || !has(PERM_BT_CONNECT);
         } else {
-            return has(Manifest.permission.ACCESS_FINE_LOCATION) || has(Manifest.permission.ACCESS_COARSE_LOCATION);
+            return !has(Manifest.permission.ACCESS_FINE_LOCATION) && !has(Manifest.permission.ACCESS_COARSE_LOCATION);
         }
     }
 
     public void requestAllBlePermissions(Activity activity, int reqCode) {
         if (Build.VERSION.SDK_INT >= 31) {
-            ActivityCompat.requestPermissions(activity, new String[]{
-                    Manifest.permission.BLUETOOTH_SCAN,
-                    Manifest.permission.BLUETOOTH_CONNECT
-            }, reqCode);
+            ActivityCompat.requestPermissions(activity, new String[]{ PERM_BT_SCAN, PERM_BT_CONNECT }, reqCode);
         } else {
-            ActivityCompat.requestPermissions(activity, new String[]{
-                    Manifest.permission.ACCESS_FINE_LOCATION
-            }, reqCode);
+            ActivityCompat.requestPermissions(activity, new String[]{ Manifest.permission.ACCESS_FINE_LOCATION }, reqCode);
         }
     }
 
@@ -184,9 +182,18 @@ public class BleActivity {
     }
 
     private void toast(String msg) { main.post(() -> Toast.makeText(appCtx, msg, Toast.LENGTH_SHORT).show()); }
-    private void d(String msg) { if (cfg.debugLogs) Log.d(TAG, msg); }
-    private void w(String msg) { if (cfg.debugLogs) Log.w(TAG, msg); }
+    private void d(String msg)     { if (cfg.debugLogs) Log.d(TAG, msg); }
+    private void w(String msg)     { if (cfg.debugLogs) Log.w(TAG, msg); }
     private void e(String msg, Throwable t) { if (cfg.debugLogs) Log.e(TAG, msg, t); }
+
+    /** Один позитивний pre-check для уникнення “always inverted” */
+    private boolean checkBtOrToast() {
+        if (isBluetoothSupported()) { toast("BLE недоступний"); return true; }
+        if (isBluetoothEnabled())   { toast("Увімкніть Bluetooth"); return true; }
+        if (hasAllBlePermissions()) { toast("Немає дозволів BLE"); return true; }
+        if (btScanner == null)       { toast("Сканер BLE недоступний"); return true; }
+        return false;
+    }
 
     // ---------- Скан ----------
     public void startBleScan(BleScanCallback cb) { startBleScan(cfg.defaultScanTimeoutMs, cb); }
@@ -194,10 +201,7 @@ public class BleActivity {
     @SuppressLint("MissingPermission")
     public void startBleScan(int timeoutMs, BleScanCallback cb) {
         if (cb == null) return;
-        if (!isBluetoothSupported()) { toast("BLE недоступний"); return; }
-        if (!isBluetoothEnabled())   { toast("Увімкніть Bluetooth"); return; }
-        if (!hasAllBlePermissions()) { toast("Немає дозволів BLE"); return; }
-        if (btScanner == null)       { toast("Сканер BLE недоступний"); return; }
+        if (checkBtOrToast()) return;
 
         stopScanInternal();
         isScanning = true;
@@ -219,7 +223,7 @@ public class BleActivity {
     @SuppressLint("MissingPermission")
     private void stopScanInternal() {
         if (!isScanning) return;
-        try { if (btScanner != null && has(Manifest.permission.BLUETOOTH_SCAN)) btScanner.stopScan(scanCb); }
+        try { if (btScanner != null && has(PERM_BT_SCAN)) btScanner.stopScan(scanCb); }
         catch (SecurityException ignored) {}
         isScanning = false;
     }
@@ -229,7 +233,7 @@ public class BleActivity {
         public void onScanResult(int callbackType, ScanResult result) {
             BluetoothDevice dev = result.getDevice();
             if (dev == null) return;
-            if (!has(Manifest.permission.BLUETOOTH_CONNECT)) return;
+            if (!has(PERM_BT_CONNECT)) return;
 
             String name = dev.getName();
             if (name == null || !name.startsWith(cfg.deviceNamePrefix)) return;
@@ -247,29 +251,33 @@ public class BleActivity {
     @Nullable public BluetoothDevice getSelectedDevice() { return selectedDevice; }
     public void setChipIdListener(@Nullable ChipIdListener l) { this.chipIdListener = l; }
     public void removeChipIdListener() { this.chipIdListener = null; }
+
+    @SuppressWarnings("unused")
     public void clearChipIdCache() { receivedChipIds.clear(); }
+
+    @SuppressWarnings("unused")
     public void clearChipIdCache(String chipId) { if (chipId != null) receivedChipIds.remove(chipId); }
 
-    // ---------- Повна конфігурація (створення кімнати) ----------
+    // ---------- Повна конфігурація ----------
     @SuppressLint("MissingPermission")
     public void sendConfigToEsp32ViaDevice(BluetoothDevice device,
                                            String roomName, String imageName,
                                            String ssid, String password,
                                            String username, boolean reset) {
         if (device == null) { toast("BLE пристрій не вибрано"); return; }
-        if (!isBluetoothEnabled()) { toast("Увімкніть Bluetooth"); return; }
-        if (!hasAllBlePermissions()) { toast("Немає дозволів BLE"); return; }
+        if (checkBtOrToast()) return;
 
         selectedDevice = device;
         cleanupGattOnly();
 
         pRoomName = roomName; pImageName = imageName; pSsid = ssid; pPassword = password; pUsername = username; pReset = reset;
-        pWifiOnly = false; writeInFlight = false; writeSucceeded = false;
+        pWifiOnly = false; writeSucceeded = false;
 
         connectGattFresh();
     }
 
     // ---------- Оновлення лише Wi-Fi ----------
+    @SuppressWarnings("unused")
     @SuppressLint("MissingPermission")
     public void sendWifiPatchViaDevice(BluetoothDevice device, String ssid, String password) {
         sendWifiPatchViaDevice(device, ssid, password, null);
@@ -278,15 +286,14 @@ public class BleActivity {
     @SuppressLint("MissingPermission")
     public void sendWifiPatchViaDevice(BluetoothDevice device, String ssid, String password, @Nullable WifiPatchCallback cb) {
         if (device == null) { toast("BLE пристрій не вибрано"); return; }
-        if (!isBluetoothEnabled()) { toast("Увімкніть Bluetooth"); return; }
-        if (!hasAllBlePermissions()) { toast("Немає дозволів BLE"); return; }
+        if (checkBtOrToast()) return;
 
         selectedDevice = device;
         cleanupGattOnly();
 
         pRoomName = null; pImageName = null; pUsername = null; pReset = false;
         pSsid = ssid; pPassword = password; pWifiOnly = true;
-        wifiCallback = cb; writeInFlight = false; writeSucceeded = false;
+        wifiCallback = cb; writeSucceeded = false;
 
         connectGattFresh();
     }
@@ -299,7 +306,11 @@ public class BleActivity {
             synchronized (gattLock) {
                 gatt = selectedDevice.connectGatt(appCtx, false, gattCb);
             }
-        } catch (SecurityException se) { e("connectGatt SEC", se); toast("Помилка підключення"); completeWifiError("Помилка підключення (SEC)"); }
+        } catch (SecurityException se) {
+            e("connectGatt SEC", se);
+            toast("Помилка підключення");
+            completeWifiError("Помилка підключення (SEC)");
+        }
     }
 
     @SuppressLint("MissingPermission")
@@ -308,8 +319,7 @@ public class BleActivity {
         closeGattSafe(gatt);
         try {
             synchronized (gattLock) {
-                if (selectedDevice != null)
-                    gatt = selectedDevice.connectGatt(appCtx, false, gattCb);
+                if (selectedDevice != null) gatt = selectedDevice.connectGatt(appCtx, false, gattCb);
             }
         } catch (SecurityException se) { e("reconnectGatt SEC", se); completeWifiError("Помилка перепідключення"); }
     }
@@ -319,16 +329,13 @@ public class BleActivity {
         public void onConnectionStateChange(BluetoothGatt g, int status, int newState) {
             d("onConnectionStateChange: status=" + status + " newState=" + newState);
             if (newState == BluetoothProfile.STATE_CONNECTED) {
-                if (Build.VERSION.SDK_INT >= 21) {
-                    boolean ok = g.requestMtu(cfg.requestMtu);
-                    d("requestMtu(" + cfg.requestMtu + ")=" + ok);
-                    if (Build.VERSION.SDK_INT >= 21) g.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_HIGH);
-                } else {
-                    g.discoverServices();
-                }
+                boolean ok = g.requestMtu(cfg.requestMtu);
+                d("requestMtu(" + cfg.requestMtu + ")=" + ok);
+                g.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_HIGH);
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 cancelAllTimeouts();
-                if (pWifiOnly && !writeSucceeded) completeWifiError(status == BluetoothGatt.GATT_SUCCESS ? "Роз'єднано до запису" : "Роз'єднано, статус=" + status);
+                if (pWifiOnly && !writeSucceeded)
+                    completeWifiError(status == BluetoothGatt.GATT_SUCCESS ? "Роз'єднано до запису" : "Роз'єднано, статус=" + status);
                 main.postDelayed(() -> { refreshDeviceCache(g); closeGattSafe(g); }, 150);
             }
         }
@@ -337,9 +344,7 @@ public class BleActivity {
         public void onMtuChanged(BluetoothGatt g, int mtu, int status) {
             currentMtu = mtu;
             d("MTU changed to " + mtu + ", status=" + status);
-            if (has(Manifest.permission.BLUETOOTH_CONNECT)) {
-                try { g.discoverServices(); } catch (SecurityException e) { e("discoverServices SEC", e); }
-            }
+            try { g.discoverServices(); } catch (SecurityException e) { e("discoverServices SEC", e); }
         }
 
         @Override @SuppressLint("MissingPermission")
@@ -352,8 +357,7 @@ public class BleActivity {
             if (ioChar == null) { if (pWifiOnly) completeWifiError("Характеристика не знайдена"); return; }
 
             int props = ioChar.getProperties();
-            boolean canWrite = (props & (BluetoothGattCharacteristic.PROPERTY_WRITE | BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE)) != 0;
-            boolean canNotify = (props & BluetoothGattCharacteristic.PROPERTY_NOTIFY) != 0;
+            boolean canWrite  = (props & (BluetoothGattCharacteristic.PROPERTY_WRITE | BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE)) != 0;
             if (!canWrite) { if (pWifiOnly) completeWifiError("Характеристика не підтримує WRITE"); return; }
 
             if (pWifiOnly) {
@@ -395,7 +399,6 @@ public class BleActivity {
         public void onCharacteristicWrite(BluetoothGatt g, BluetoothGattCharacteristic c, int status) {
             if (ioChar == null || c.getUuid() == null || !c.getUuid().equals(ioChar.getUuid())) return;
 
-            writeInFlight = false;
             main.removeCallbacks(writeTimeout);
 
             if (status == BluetoothGatt.GATT_SUCCESS) {
@@ -428,46 +431,53 @@ public class BleActivity {
         }
     };
 
+    // ---------- Payload builder ----------
+    @Nullable
+    private byte[] buildPayload() throws JSONException {
+        final String encPwd = cfg.encryptJsonPassword ? encryptPassword(pPassword) : pPassword;
+
+        JSONObject json = new JSONObject();
+        if (pWifiOnly) {
+            json.put("ssid", pSsid);
+            json.put("password", encPwd);
+        } else {
+            if (pRoomName  != null) json.put("roomName",  pRoomName);
+            if (pImageName != null) json.put("imageName", pImageName);
+            if (pSsid      != null) json.put("ssid",      pSsid);
+            if (pPassword  != null) json.put("password",  encPwd);
+            if (pUsername  != null) json.put("username",  pUsername);
+            json.put("reset", pReset);
+        }
+        return json.toString().getBytes(StandardCharsets.UTF_8);
+    }
+
     // ---------- Надсилання конфігу ----------
     @SuppressLint("MissingPermission")
     private void sendConfigNow(@Nullable BluetoothGatt g) {
         if (g == null || ioChar == null) { if (pWifiOnly) completeWifiError("BLE не готовий"); return; }
 
-        final String encPwd = cfg.encryptJsonPassword ? encryptPassword(pPassword) : pPassword;
-
+        byte[] payload;
         try {
-            JSONObject json = new JSONObject();
-            if (pWifiOnly) {
-                json.put("ssid", pSsid);
-                json.put("password", encPwd);
-            } else {
-                if (pRoomName != null)  json.put("roomName", pRoomName);
-                if (pImageName != null) json.put("imageName", pImageName);
-                if (pSsid != null)      json.put("ssid", pSsid);
-                if (pPassword != null)  json.put("password", encPwd);
-                if (pUsername != null)  json.put("username", pUsername);
-                json.put("reset", pReset);
-            }
-
-            byte[] payload = json.toString().getBytes(StandardCharsets.UTF_8);
-            int maxPayload = Math.max(20, currentMtu - 3);
-            if (payload.length > maxPayload) {
-                w("Payload " + payload.length + " > " + maxPayload + " (MTU-3). Скороти поля або підтягни MTU.");
-            }
-
-            ioChar.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
-            ioChar.setValue(payload);
-            boolean queued = g.writeCharacteristic(ioChar);
-            writeInFlight = queued;
-            d("writeCharacteristic queued=" + queued + ", bytes=" + payload.length);
-
-            if (!queued) { if (pWifiOnly) completeWifiError("writeCharacteristic() повернув false"); else closeGattSafe(g); return; }
-            if (pWifiOnly) main.postDelayed(writeTimeout, cfg.writeTimeoutMs);
-
+            payload = buildPayload();
         } catch (JSONException e) {
             e("JSON error", e);
             if (pWifiOnly) completeWifiError("JSON помилка"); else closeGattSafe(g);
+            return;
         }
+
+        int maxPayload = Math.max(20, currentMtu - 3);
+        assert payload != null;
+        if (payload.length > maxPayload) {
+            w(String.format(Locale.ROOT, "Payload %d > %d (MTU-3).", payload.length, maxPayload));
+        }
+
+        ioChar.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
+        ioChar.setValue(payload);
+        boolean queued = g.writeCharacteristic(ioChar);
+        d("writeCharacteristic queued=" + queued + ", bytes=" + payload.length);
+
+        if (!queued) { if (pWifiOnly) completeWifiError("writeCharacteristic() повернув false"); else closeGattSafe(g); return; }
+        if (pWifiOnly) main.postDelayed(writeTimeout, cfg.writeTimeoutMs);
     }
 
     private void onWriteTimeout() {
@@ -488,7 +498,7 @@ public class BleActivity {
     @SuppressLint("MissingPermission")
     private void ensureBondThenRetry() {
         if (selectedDevice == null) return;
-        if (!has(Manifest.permission.BLUETOOTH_CONNECT)) { completeWifiError("Немає BLUETOOTH_CONNECT"); return; }
+        if (!has(PERM_BT_CONNECT)) { completeWifiError("Немає BLUETOOTH_CONNECT"); return; }
 
         int bs = selectedDevice.getBondState();
         d("ensureBondThenRetry, bondState=" + bs);
@@ -526,28 +536,29 @@ public class BleActivity {
 
     private void unregisterBondReceiverIfNeeded() {
         if (!bondReceiverRegistered) return;
-        try {
-            appCtx.unregisterReceiver(bondReceiver);
-        } catch (Exception ignored) {}
+        try { appCtx.unregisterReceiver(bondReceiver); } catch (Exception ignored) {}
         bondReceiverRegistered = false;
     }
 
-    /** Прихована очистка GATT-кешу (для перепрошивок/зміни атрибутів) */
-    private boolean refreshDeviceCache(@Nullable BluetoothGatt g) {
-        if (g == null) return false;
+    /** Прихована очистка GATT-кешу через reflection. */
+    @SuppressLint("PrivateApi")
+    private void refreshDeviceCache(@Nullable BluetoothGatt g) {
+        if (g == null) return;
         try {
             java.lang.reflect.Method m = g.getClass().getMethod("refresh");
-            boolean result = (Boolean) m.invoke(g);
-            d("refreshDeviceCache=" + result);
-            return result;
-        } catch (Exception e) {
-            w("refreshDeviceCache failed: " + e.getMessage());
-            return false;
+            m.setAccessible(true); // 👈 допомагає уникнути Cannot resolve
+            Object result = m.invoke(g);
+            if (result instanceof Boolean) {
+                boolean ok = (Boolean) result;
+                Log.d(TAG, "refreshDeviceCache=" + ok);
+            }
+        } catch (Exception ex) {
+            Log.w(TAG, "refreshDeviceCache failed: " + ex.getMessage());
         }
     }
 
+
     // ---------- Сервісні ----------
-    /** Викликайте у onDestroy() активності/фрагмента */
     @SuppressLint("MissingPermission")
     public void cleanup() {
         stopScanInternal();
@@ -555,7 +566,7 @@ public class BleActivity {
         cancelAllTimeouts();
         unregisterBondReceiverIfNeeded();
         chipIdListener = null;
-        wifiCallback = null;
+        wifiCallback   = null;
     }
 
     @SuppressLint("MissingPermission")
@@ -569,21 +580,20 @@ public class BleActivity {
         main.removeCallbacks(notifyTimeout);
     }
 
-    /** Безпечне закриття GATT з уникненням гонок/подвійних close */
+    /** Безпечне закриття GATT (унікнення гонок/подвійного close) */
     @SuppressLint("MissingPermission")
     private void closeGattSafe(@Nullable BluetoothGatt g) {
         if (g == null) return;
         synchronized (gattLock) {
             BluetoothGatt local = gatt;
-            // обнуляємо посилання ПЕРЕД закриттям, щоб інші гілки бачили, що GATT вже “пішов”
-            if (g == local) gatt = null;
-            try { if (has(Manifest.permission.BLUETOOTH_CONNECT)) g.disconnect(); } catch (Throwable ignored) {}
+            if (g == local) gatt = null; // обнуляємо посилання ПЕРЕД закриттям
+            try { if (has(PERM_BT_CONNECT)) g.disconnect(); } catch (Throwable ignored) {}
             try { g.close(); } catch (Throwable ignored) {}
         }
         cancelAllTimeouts();
     }
 
-    // ---------- AES для пароля в JSON ----------
+    // ---------- AES для пароля ----------
     private String encryptPassword(String password) {
         if (password == null) return null;
         if (!cfg.encryptJsonPassword) return password;
@@ -591,7 +601,7 @@ public class BleActivity {
             byte[] key = (cfg.aesKey16 != null && cfg.aesKey16.length == 16) ? cfg.aesKey16 : "my-secret-key-12".getBytes(StandardCharsets.UTF_8);
             byte[] iv  = (cfg.aesIv16  != null && cfg.aesIv16.length  == 16) ? cfg.aesIv16  : new byte[16];
             SecretKeySpec secretKey = new SecretKeySpec(key, "AES");
-            IvParameterSpec ivSpec = new IvParameterSpec(iv);
+            IvParameterSpec ivSpec  = new IvParameterSpec(iv);
             Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
             cipher.init(Cipher.ENCRYPT_MODE, secretKey, ivSpec);
             byte[] enc = cipher.doFinal(password.getBytes(StandardCharsets.UTF_8));
@@ -606,22 +616,17 @@ public class BleActivity {
         final WifiPatchCallback cb = wifiCallback;
         wifiCallback = null;
         pWifiOnly = false;
-        writeInFlight = false;
         writeSucceeded = false;
         cancelAllTimeouts();
 
-        if (cb != null) {
-            main.post(cb::onSuccess);
-        } else {
-            d("WifiPatchCallback is null, success ignored");
-        }
+        if (cb != null) main.post(cb::onSuccess);
+        else d("WifiPatchCallback is null, success ignored");
     }
 
     private void completeWifiError(@Nullable String message) {
         final WifiPatchCallback cb = wifiCallback;
         wifiCallback = null;
         pWifiOnly = false;
-        writeInFlight = false;
         writeSucceeded = false;
         cancelAllTimeouts();
 
@@ -633,7 +638,7 @@ public class BleActivity {
         }
     }
 
-
     // ---------- Utility ----------
-    private boolean hasBleConnect() { return has(Manifest.permission.BLUETOOTH_CONNECT); }
+    @SuppressWarnings("unused")
+    private boolean hasBleConnect() { return has(PERM_BT_CONNECT); }
 }

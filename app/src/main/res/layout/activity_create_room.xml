@@ -215,8 +215,8 @@
                             android:src="@drawable/balkon"
                             android:background="@drawable/bg_rounded_image"
                             android:clipToOutline="true"
-                            android:contentDescription="Extra"
-                            android:tag="extra" />
+                            android:contentDescription="Balkon"
+                            android:tag="balkon" />
                     </FrameLayout>
 
                 </GridLayout>

@@ -7,7 +7,6 @@ import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
@@ -40,8 +39,7 @@ public class ProfileDialogFragment extends DialogFragment {
     @NonNull
     @Override
     public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
-        View view = LayoutInflater.from(requireContext())
-                .inflate(R.layout.dialog_profile, null, false);
+        View view = getLayoutInflater().inflate(R.layout.dialog_profile, null, false);
 
         tvUsername = view.findViewById(R.id.tvUsername);
         tvUserId   = view.findViewById(R.id.tvUserId);
@@ -50,10 +48,10 @@ public class ProfileDialogFragment extends DialogFragment {
         MaterialButton btnClose  = view.findViewById(R.id.btnClose);
         MaterialButton btnLogout = view.findViewById(R.id.btnLogout);
 
-        // Початковий текст
-        tvUsername.setText(getString(R.string.guest));
-        tvUserId.setText("ID: —");
-        tvEmail.setText("Email: —");
+        // Початковий текст із ресурсів
+        tvUsername.setText(getString(R.string.guesttext));
+        tvUserId.setText(getString(R.string.profile_id, "—"));
+        tvEmail.setText(getString(R.string.profile_email, "—"));
 
         // Читаємо userId із prefs
         SharedPreferences sp = requireContext().getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE);
@@ -66,7 +64,7 @@ public class ProfileDialogFragment extends DialogFragment {
 
             Log.d(TAG, "Запитуємо профіль для userId=" + userId);
 
-            inFlight.enqueue(new Callback<UserProfileDto>() {
+            inFlight.enqueue(new Callback<>() {
                 @Override
                 public void onResponse(@NonNull Call<UserProfileDto> call,
                                        @NonNull Response<UserProfileDto> response) {
@@ -77,13 +75,13 @@ public class ProfileDialogFragment extends DialogFragment {
                         UserProfileDto u = response.body();
                         Log.d(TAG, "Body = " + new Gson().toJson(u));
 
-                        tvUsername.setText("Привіт, " + safe(u.getUsername()));
-                        tvUserId.setText("ID: " + u.getId());
-                        tvEmail.setText("Email: " + safe(u.getEmail()));
+                        tvUsername.setText(getString(R.string.profile_hello, safe(u.getUsername())));
+                        tvUserId.setText(getString(R.string.profile_id, String.valueOf(u.getId())));
+                        tvEmail.setText(getString(R.string.profile_email, safe(u.getEmail())));
                     } else {
-                        tvUsername.setText("Привіт, user");
-                        tvUserId.setText("ID: —");
-                        tvEmail.setText("Email: —");
+                        tvUsername.setText(getString(R.string.profile_hello, getString(R.string.usertext)));
+                        tvUserId.setText(getString(R.string.profile_id, "—"));
+                        tvEmail.setText(getString(R.string.profile_email, "—"));
                     }
                 }
 
@@ -91,9 +89,9 @@ public class ProfileDialogFragment extends DialogFragment {
                 public void onFailure(@NonNull Call<UserProfileDto> call, @NonNull Throwable t) {
                     if (!isAdded()) return;
                     Log.e(TAG, "onFailure: " + t.getMessage(), t);
-                    tvUsername.setText("Привіт, user");
-                    tvUserId.setText("ID: —");
-                    tvEmail.setText("Email: —");
+                    tvUsername.setText(getString(R.string.profile_hello, getString(R.string.usertext)));
+                    tvUserId.setText(getString(R.string.profile_id, "—"));
+                    tvEmail.setText(getString(R.string.profile_email, "—"));
                 }
             });
         } else {

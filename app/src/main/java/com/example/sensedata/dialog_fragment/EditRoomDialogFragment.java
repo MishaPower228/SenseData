@@ -3,7 +3,6 @@ package com.example.sensedata.dialog_fragment;
 import android.app.Dialog;
 import android.content.Context;
 import android.os.Bundle;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.FrameLayout;
@@ -20,19 +19,23 @@ import com.example.sensedata.network.ApiClientMain;
 import com.example.sensedata.network.RoomApiService;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
+import java.util.Arrays;
+import java.util.List;
+
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-/** Діалог редагування кімнати з кастомними кнопками. */
 public class EditRoomDialogFragment extends DialogFragment {
 
     public static final String TAG = "EditRoomDialog";
-    private static final String ARG_CHIP  = "chipId";
-    private static final String ARG_NAME  = "name";
+    private static final String ARG_CHIP = "chipId";
+    private static final String ARG_NAME = "name";
     private static final String ARG_IMAGE = "image";
 
-    public interface OnRoomsChangedListener { void onRoomsChanged(); }
+    public interface OnRoomsChangedListener {
+        void onRoomsChanged();
+    }
 
     public static EditRoomDialogFragment newInstance(String chipId, String currentName, String currentImage) {
         Bundle b = new Bundle();
@@ -44,45 +47,50 @@ public class EditRoomDialogFragment extends DialogFragment {
         return f;
     }
 
-    @NonNull @Override
+    @NonNull
+    @Override
     public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
-        View view = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_edit_room, null, false);
+        View view = getLayoutInflater().inflate(R.layout.dialog_edit_room, null, false);
 
-        String chipId     = getArguments() != null ? getArguments().getString(ARG_CHIP) : null;
-        String current    = getArguments() != null ? getArguments().getString(ARG_NAME) : null;
+        String chipId = getArguments() != null ? getArguments().getString(ARG_CHIP) : null;
+        String current = getArguments() != null ? getArguments().getString(ARG_NAME) : null;
         String currentImg = getArguments() != null ? getArguments().getString(ARG_IMAGE) : null;
 
         EditText etName = view.findViewById(R.id.etRoomName);
         etName.setText(current != null ? current : "");
 
         // Контейнери та картинки
-        FrameLayout[] containers = new FrameLayout[] {
+        List<FrameLayout> containers = Arrays.asList(
                 view.findViewById(R.id.container1),
                 view.findViewById(R.id.container2),
                 view.findViewById(R.id.container3),
                 view.findViewById(R.id.container4),
                 view.findViewById(R.id.container5),
                 view.findViewById(R.id.container6)
-        };
-        ImageView[] images = new ImageView[] {
+        );
+        List<ImageView> images = Arrays.asList(
                 view.findViewById(R.id.img1),
                 view.findViewById(R.id.img2),
                 view.findViewById(R.id.img3),
                 view.findViewById(R.id.img4),
                 view.findViewById(R.id.img5),
                 view.findViewById(R.id.img6)
-        };
+        );
 
-        final String[] selectedImage = { currentImg };
+        final String[] selectedImage = {currentImg};
 
         // Вибір зображення
-        for (int i = 0; i < images.length; i++) {
+        for (int i = 0; i < images.size(); i++) {
             final int idx = i;
-            images[i].setOnClickListener(v -> {
+            images.get(i).setOnClickListener(v -> {
                 for (FrameLayout c : containers) c.setSelected(false);
-                containers[idx].setSelected(true);
-                for (ImageView iv : images) { iv.setScaleX(1f); iv.setScaleY(1f); }
-                v.setScaleX(0.95f); v.setScaleY(0.95f);
+                containers.get(idx).setSelected(true);
+                for (ImageView iv : images) {
+                    iv.setScaleX(1f);
+                    iv.setScaleY(1f);
+                }
+                v.setScaleX(0.95f);
+                v.setScaleY(0.95f);
                 Object tag = v.getTag();
                 selectedImage[0] = tag == null ? null : String.valueOf(tag);
             });
@@ -90,29 +98,32 @@ public class EditRoomDialogFragment extends DialogFragment {
 
         // Підсвітити поточне
         if (currentImg != null) {
-            for (int i = 0; i < images.length; i++) {
-                Object tag = images[i].getTag();
+            for (ImageView image : images) {
+                Object tag = image.getTag();
                 if (tag != null && tag.toString().equals(currentImg)) {
-                    images[i].performClick();
+                    image.performClick();
                     break;
                 }
             }
         }
 
-        // КАСТОМНІ КНОПКИ
+        // Кастомні кнопки
         View btnCancel = view.findViewById(R.id.btnCancel);
-        View btnSave   = view.findViewById(R.id.btnSave);
+        View btnSave = view.findViewById(R.id.btnSave);
 
         btnCancel.setOnClickListener(v -> dismiss());
         btnSave.setOnClickListener(v -> {
             String newName = etName.getText() == null ? "" : etName.getText().toString().trim();
-            if (newName.isEmpty()) { etName.setError("Введіть назву"); return; }
+            if (newName.isEmpty()) {
+                etName.setError(getString(R.string.error_enter_name));
+                return;
+            }
             if (selectedImage[0] == null) {
-                Toast.makeText(requireContext(), "Оберіть зображення", Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), R.string.error_select_image, Toast.LENGTH_SHORT).show();
                 return;
             }
             if (chipId == null || chipId.trim().isEmpty()) {
-                Toast.makeText(requireContext(), "Немає chipId", Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), R.string.error_no_chipid, Toast.LENGTH_SHORT).show();
                 return;
             }
             doPutUpdateOwnership(chipId, newName, selectedImage[0]);
@@ -127,46 +138,47 @@ public class EditRoomDialogFragment extends DialogFragment {
     private void doPutUpdateOwnership(String chipId, String newName, String newImage) {
         RoomApiService api = ApiClientMain.getClient(requireContext()).create(RoomApiService.class);
         SensorOwnershipUpdateDto body = new SensorOwnershipUpdateDto(chipId, newName, newImage);
-
         String ifMatch = getEtagForChip(requireContext(), chipId);
 
-        api.updateOwnership(ifMatch, body).enqueue(new Callback<Void>() {
-            @Override public void onResponse(Call<Void> call, Response<Void> resp) {
+        api.updateOwnership(ifMatch, body).enqueue(new Callback<>() {
+            @Override
+            public void onResponse(@NonNull Call<Void> call, @NonNull Response<Void> resp) {
                 if (!isAdded()) return;
 
                 if (resp.isSuccessful()) {
-                    // зберігаємо новий ETag, якщо сервер повернув
                     String etag = resp.headers().get("ETag");
                     if (etag != null) saveEtagForChip(requireContext(), chipId, etag);
 
-                    Toast.makeText(requireContext(), "Кімнату оновлено", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(requireContext(), R.string.room_updated, Toast.LENGTH_SHORT).show();
 
                     if (getActivity() instanceof OnRoomsChangedListener l) {
                         l.onRoomsChanged();
                     }
                     dismiss();
                 } else {
-                    int code = resp.code();
                     Toast.makeText(requireContext(),
-                            "Помилка PUT: " + code, Toast.LENGTH_LONG).show();
+                            getString(R.string.error_put_failed, resp.code()), Toast.LENGTH_LONG).show();
 
                     if (getActivity() instanceof OnRoomsChangedListener l) {
                         l.onRoomsChanged();
                     }
                 }
             }
-            @Override public void onFailure(Call<Void> call, Throwable t) {
+
+            @Override
+            public void onFailure(@NonNull Call<Void> call, @NonNull Throwable t) {
                 if (!isAdded()) return;
-                Toast.makeText(requireContext(), "PUT збій: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(),
+                        getString(R.string.error_put_crash, t.getMessage()), Toast.LENGTH_SHORT).show();
             }
         });
     }
 
-    // --- ETag локальне сховище ---
     private static String getEtagForChip(Context ctx, String chipId) {
         return ctx.getSharedPreferences("etag_store", Context.MODE_PRIVATE)
                 .getString("etag_" + chipId, null);
     }
+
     private static void saveEtagForChip(Context ctx, String chipId, String etag) {
         if (etag == null) return;
         ctx.getSharedPreferences("etag_store", Context.MODE_PRIVATE)

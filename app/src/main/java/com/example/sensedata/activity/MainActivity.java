@@ -7,6 +7,7 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.text.SpannableString;
@@ -24,6 +25,7 @@ import android.widget.Toast;
 import androidx.activity.EdgeToEdge;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.NonNull;
 import androidx.appcompat.content.res.AppCompatResources;
 import androidx.appcompat.widget.PopupMenu;
 import androidx.core.app.ActivityCompat;
@@ -32,7 +34,6 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.GravityCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
-import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
@@ -47,12 +48,10 @@ import com.example.sensedata.dialog_fragment.ThresholdDialogFragment;
 import com.example.sensedata.dialog_fragment.WifiDialogFragment;
 import com.example.sensedata.model.historychart.SensorPointDto;
 import com.example.sensedata.model.room.RoomWithSensorDto;
-import com.example.sensedata.model.sensorownership.SensorOwnershipRequestDto;
 import com.example.sensedata.network.ApiClientMain;
 import com.example.sensedata.network.RoomApiService;
 import com.example.sensedata.network.SensorDataApiService;
 import com.example.sensedata.network.UserApiService;
-import com.example.sensedata.user.LoginActivity;
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.components.AxisBase;
 import com.github.mikephil.charting.components.LimitLine;
@@ -85,12 +84,9 @@ public class MainActivity extends ImmersiveActivity
         DeleteRoomDialogFragment.OnRoomsChangedListener {
 
     private static final int PERMISSION_REQUEST_CODE = 1001;
-
     private static final long ROOMS_REFRESH_INTERVAL_MS = 30_000L;
 
-    private String pendingSelectChipId = null;
     private WeatherActivity weatherActivity;
-    private RecyclerView roomRecyclerView;
     private RoomAdapter roomAdapter;
     private final Handler handler = new Handler();
     private Runnable refreshRunnable;
@@ -106,9 +102,6 @@ public class MainActivity extends ImmersiveActivity
     private ChipGroup chipGroupRooms;
     private final List<RoomWithSensorDto> roomsCache = new ArrayList<>();
     private String selectedChipId = null;
-
-    private DrawerLayout drawerLayout;
-    private NavigationView navView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -129,6 +122,7 @@ public class MainActivity extends ImmersiveActivity
 
         setContentView(R.layout.activity_main);
 
+        // ─── Toolbar + Drawer ─────────────────────────────────────────────────────
         MaterialToolbar toolbar = findViewById(R.id.custom_toolbar);
         ViewCompat.setOnApplyWindowInsetsListener(toolbar, (v, insets) -> {
             Insets topInsets = insets.getInsets(
@@ -152,8 +146,8 @@ public class MainActivity extends ImmersiveActivity
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) getSupportActionBar().setDisplayShowTitleEnabled(false);
 
-        drawerLayout = findViewById(R.id.drawer_layout);
-        navView = findViewById(R.id.nav_view);
+        final androidx.drawerlayout.widget.DrawerLayout drawerLayout = findViewById(R.id.drawer_layout);
+        final NavigationView navView = findViewById(R.id.nav_view);
         toolbar.setNavigationOnClickListener(v -> drawerLayout.openDrawer(GravityCompat.START));
         navView.setNavigationItemSelectedListener(item -> {
             item.setChecked(true);
@@ -162,12 +156,10 @@ public class MainActivity extends ImmersiveActivity
             int id = item.getItemId();
             if (id == R.id.nav_profile) {
                 new ProfileDialogFragment().show(getSupportFragmentManager(), ProfileDialogFragment.TAG);
-            }
-            else if (id == R.id.nav_thresholds) {
+            } else if (id == R.id.nav_thresholds) {
                 ThresholdDialogFragment.newInstance(null)
                         .show(getSupportFragmentManager(), ThresholdDialogFragment.TAG);
-            }
-            else if (id == R.id.nav_logout) {
+            } else if (id == R.id.nav_logout) {
                 new LogoutDialogFragment().show(getSupportFragmentManager(), LogoutDialogFragment.TAG);
             }
             return true;
@@ -176,14 +168,17 @@ public class MainActivity extends ImmersiveActivity
         TextView title = toolbar.findViewById(R.id.toolbar_title);
         setHello(title, getSavedUsername() != null ? getSavedUsername() : getString(R.string.guest));
         refreshUsernameFromServer(title);
+
         ImageView profileIcon = toolbar.findViewById(R.id.toolbar_profile_icon);
         if (profileIcon != null) {
             profileIcon.setOnClickListener(v ->
                     new ProfileDialogFragment().show(getSupportFragmentManager(), ProfileDialogFragment.TAG));
         }
 
+        // ─── Permissions ──────────────────────────────────────────────────────────
         requestAllPermissions();
 
+        // ─── Weather + Pull-To-Refresh ────────────────────────────────────────────
         weatherActivity = new WeatherActivity(this);
         weatherActivity.startWeatherUpdates();
 
@@ -199,12 +194,15 @@ public class MainActivity extends ImmersiveActivity
             swipeRefresh.postDelayed(() -> swipeRefresh.setRefreshing(false), 1000);
         });
 
+        // ─── Rooms list ───────────────────────────────────────────────────────────
         setupRoomsRecycler();
 
+        // ─── Create Room flow ─────────────────────────────────────────────────────
         setupCreateRoomLauncher();
         FloatingActionButton fab = findViewById(R.id.fab_add_room);
         fab.setOnClickListener(v -> createRoomLauncher.launch(new Intent(this, CreateRoomActivity.class)));
 
+        // ─── Chart UI ─────────────────────────────────────────────────────────────
         chart          = findViewById(R.id.chart);
         btnDay         = findViewById(R.id.btnDay);
         btnWeek        = findViewById(R.id.btnWeek);
@@ -237,6 +235,7 @@ public class MainActivity extends ImmersiveActivity
         });
         highlightButton(btnTemperature, btnHumidity);
 
+        // ─── Initial data ─────────────────────────────────────────────────────────
         loadRoomsFromServer();
         startPeriodicRoomRefresh();
     }
@@ -247,8 +246,9 @@ public class MainActivity extends ImmersiveActivity
         if (refreshRunnable != null) handler.removeCallbacks(refreshRunnable);
     }
 
+    // ───────────────────────── Rooms Recycler ─────────────────────────────────────
     private void setupRoomsRecycler() {
-        roomRecyclerView = findViewById(R.id.room_recycler_view);
+        RecyclerView roomRecyclerView = findViewById(R.id.room_recycler_view);
         LinearLayoutManager lm = new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false);
         roomRecyclerView.setLayoutManager(lm);
 
@@ -259,7 +259,7 @@ public class MainActivity extends ImmersiveActivity
                     intent.putExtra(SensorDataActivity.EXTRA_ROOM_NAME, room.getRoomName());
                     startActivity(intent);
                 },
-                (anchor, room) -> showRoomPopup(anchor, room)
+                this::showRoomPopup
         );
         roomRecyclerView.setAdapter(roomAdapter);
     }
@@ -273,33 +273,40 @@ public class MainActivity extends ImmersiveActivity
                     String chipId    = result.getData().getStringExtra("chipId");
                     String roomName  = result.getData().getStringExtra("roomName");
                     String imageName = result.getData().getStringExtra("imageName");
-                    String username = result.getData().getStringExtra("username");
-                    int userId       = getSavedUserId();
+                    int userId       = getSavedUserId();  // беремо з SharedPreferences
 
                     if (chipId == null || chipId.trim().isEmpty() || userId <= 0) {
                         Toast.makeText(this, "Невірні дані кімнати (chipId/userId)", Toast.LENGTH_SHORT).show();
                         return;
                     }
 
-                    SensorOwnershipRequestDto dto = new SensorOwnershipRequestDto(
-                            roomName,   // ✅ перший аргумент
-                            imageName,  // ✅ другий
-                            chipId,     // ✅ третій
-                            username    // ✅ четвертий
-                    );
+                    // створюємо DTO під серверний SensorOwnershipCreateDto
+                    com.example.sensedata.model.sensorownership.SensorOwnershipCreateDto dto =
+                            new com.example.sensedata.model.sensorownership.SensorOwnershipCreateDto(
+                                    userId,
+                                    chipId,
+                                    roomName,
+                                    imageName
+                            );
 
                     RoomApiService api = ApiClientMain.getClient(this).create(RoomApiService.class);
                     api.createOwnership(dto).enqueue(new Callback<RoomWithSensorDto>() {
                         @Override
-                        public void onResponse(Call<RoomWithSensorDto> call, Response<RoomWithSensorDto> resp) {
+                        public void onResponse(@NonNull Call<RoomWithSensorDto> call,
+                                               @NonNull Response<RoomWithSensorDto> resp) {
                             if (!resp.isSuccessful() || resp.body() == null) {
-                                Toast.makeText(MainActivity.this, "Помилка створення: " + resp.code(), Toast.LENGTH_LONG).show();
+                                Toast.makeText(MainActivity.this,
+                                        "Помилка створення: " + resp.code(),
+                                        Toast.LENGTH_LONG).show();
                                 return;
                             }
 
                             RoomWithSensorDto created = resp.body();
-                            Toast.makeText(MainActivity.this, "Кімнату створено", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(MainActivity.this,
+                                    "Кімнату створено",
+                                    Toast.LENGTH_SHORT).show();
 
+                            // додаємо нову кімнату в адаптер
                             List<RoomWithSensorDto> updated = new ArrayList<>(roomAdapter.getCurrentList());
                             updated.add(created);
                             roomAdapter.submitList(updated);
@@ -313,17 +320,21 @@ public class MainActivity extends ImmersiveActivity
                         }
 
                         @Override
-                        public void onFailure(Call<RoomWithSensorDto> call, Throwable t) {
-                            Toast.makeText(MainActivity.this, "Збій створення: " + t.getMessage(), Toast.LENGTH_LONG).show();
+                        public void onFailure(@NonNull Call<RoomWithSensorDto> call,
+                                              @NonNull Throwable t) {
+                            Toast.makeText(MainActivity.this,
+                                    "Збій створення: " + t.getMessage(),
+                                    Toast.LENGTH_LONG).show();
                         }
                     });
                 }
         );
     }
-private void showRoomPopup(View anchor, RoomWithSensorDto room) {
+
+    private void showRoomPopup(View anchor, RoomWithSensorDto room) {
         Context wrapper = new android.view.ContextThemeWrapper(this, R.style.ThemeOverlay_App_PopupMenu);
         PopupMenu menu = new PopupMenu(wrapper, anchor, Gravity.END);
-        if (android.os.Build.VERSION.SDK_INT >= 23) menu.setGravity(Gravity.END);
+        menu.setGravity(Gravity.END);
 
         menu.getMenu().add(0, 1, 0, "Оновити кімнату");
         menu.getMenu().add(0, 2, 1, "Оновити Wi-Fi");
@@ -334,20 +345,26 @@ private void showRoomPopup(View anchor, RoomWithSensorDto room) {
 
         menu.setOnMenuItemClickListener(item -> {
             switch (item.getItemId()) {
-                case 1 -> EditRoomDialogFragment.newInstance(room.getChipId(), room.getRoomName(), room.getImageName())
-                        .show(getSupportFragmentManager(), EditRoomDialogFragment.TAG);
-                case 2 -> WifiDialogFragment.newInstance(room.getChipId())
-                        .show(getSupportFragmentManager(), WifiDialogFragment.TAG);
-                case 3 -> DeleteRoomDialogFragment.newInstance(room.getChipId(), room.getRoomName())
-                        .show(getSupportFragmentManager(), DeleteRoomDialogFragment.TAG);
-                case 4 -> {
+                case 1:
+                    EditRoomDialogFragment.newInstance(room.getChipId(), room.getRoomName(), room.getImageName())
+                            .show(getSupportFragmentManager(), EditRoomDialogFragment.TAG);
+                    break;
+                case 2:
+                    WifiDialogFragment.newInstance(room.getChipId())
+                            .show(getSupportFragmentManager(), WifiDialogFragment.TAG);
+                    break;
+                case 3:
+                    DeleteRoomDialogFragment.newInstance(room.getChipId(), room.getRoomName())
+                            .show(getSupportFragmentManager(), DeleteRoomDialogFragment.TAG);
+                    break;
+                case 4:
                     if (TextUtils.isEmpty(room.getChipId())) {
                         Toast.makeText(this, "У кімнати немає chipId", Toast.LENGTH_SHORT).show();
                         return true;
                     }
                     ThresholdDialogFragment.newInstance(room.getChipId())
                             .show(getSupportFragmentManager(), ThresholdDialogFragment.TAG);
-                }
+                    break;
             }
             return true;
         });
@@ -369,13 +386,13 @@ private void showRoomPopup(View anchor, RoomWithSensorDto room) {
         dialog.show(getSupportFragmentManager(), ThresholdDialogFragment.TAG);
     }
 
-    // ----------------------------- Реакція на діалоги -----------------------------
+    // ───────────────────────── Dialog callbacks ───────────────────────────────────
     @Override
     public void onRoomsChanged() {
         loadRoomsFromServer();
     }
 
-    // ----------------------------- Завантаження кімнат -----------------------------
+    // ───────────────────────── Periodic refresh ───────────────────────────────────
     private void startPeriodicRoomRefresh() {
         stopPeriodicRoomRefresh();
         refreshRunnable = new Runnable() {
@@ -391,16 +408,15 @@ private void showRoomPopup(View anchor, RoomWithSensorDto room) {
         if (refreshRunnable != null) handler.removeCallbacks(refreshRunnable);
     }
 
-    private void loadRoomsFromServer() { loadRoomsFromServer(null); }
-
-    private void loadRoomsFromServer(@androidx.annotation.Nullable Runnable after) {
+    // ───────────────────────── Load rooms ─────────────────────────────────────────
+    private void loadRoomsFromServer() {
         int userId = getSavedUserId();
         if (userId == -1) return;
 
         RoomApiService apiService = ApiClientMain.getClient(this).create(RoomApiService.class);
-        apiService.getAllRooms(userId).enqueue(new Callback<List<RoomWithSensorDto>>() {
+        apiService.getAllRooms(userId).enqueue(new Callback<>() {
             @Override
-            public void onResponse(Call<List<RoomWithSensorDto>> call, Response<List<RoomWithSensorDto>> response) {
+            public void onResponse(@NonNull Call<List<RoomWithSensorDto>> call, @NonNull Response<List<RoomWithSensorDto>> response) {
                 if (!response.isSuccessful()) {
                     if (response.code() == 401) handleUnauthorized();
                     return;
@@ -424,15 +440,13 @@ private void showRoomPopup(View anchor, RoomWithSensorDto room) {
                 } else {
                     updateChartForSelection();
                 }
-
-                if (after != null) after.run();
             }
 
-            @Override public void onFailure(Call<List<RoomWithSensorDto>> call, Throwable t) { /* ignore */ }
+            @Override public void onFailure(@NonNull Call<List<RoomWithSensorDto>> call, @NonNull Throwable t) { /* ignore */ }
         });
     }
 
-    // ----------------------------- Чіпи кімнат -----------------------------
+    // ───────────────────────── Chips ──────────────────────────────────────────────
     private void renderRoomChips(List<RoomWithSensorDto> rooms) {
         chipGroupRooms.setOnCheckedStateChangeListener(null);
         chipGroupRooms.removeAllViews();
@@ -469,15 +483,13 @@ private void showRoomPopup(View anchor, RoomWithSensorDto room) {
 
             chip.setChipBackgroundColor(AppCompatResources.getColorStateList(this, R.color.chip_bg_selector));
             chip.setTextColor(AppCompatResources.getColorStateList(this, R.color.chip_text_selector));
-            chip.setChipStrokeWidth(dp(2f));
+            chip.setChipStrokeWidth(dp());
             chip.setChipStrokeColor(AppCompatResources.getColorStateList(this, R.color.chip_stroke_selector));
             chip.setRippleColor(AppCompatResources.getColorStateList(this, R.color.chip_ripple_selector));
 
             chipGroupRooms.addView(chip);
 
-            if (pendingSelectChipId != null && pendingSelectChipId.equals(r.getChipId())) {
-                toCheckId = chip.getId();
-            } else if (selectedChipId != null && selectedChipId.equals(r.getChipId())) {
+            if (selectedChipId != null && selectedChipId.equals(r.getChipId())) {
                 toCheckId = chip.getId();
             }
         }
@@ -496,13 +508,13 @@ private void showRoomPopup(View anchor, RoomWithSensorDto room) {
         }
 
         chipGroupRooms.setOnCheckedStateChangeListener((group, checkedIds) -> {
-            if (checkedIds == null || checkedIds.isEmpty()) return;
+            if (checkedIds.isEmpty()) return;
             int id = checkedIds.get(0);
             View v = group.findViewById(id);
             if (!(v instanceof Chip)) return;
 
             String newChipId = String.valueOf(v.getTag());
-            if (!newChipId.equals(selectedChipId)) {
+            if (!TextUtils.equals(newChipId, selectedChipId)) {
                 selectedChipId = newChipId;
                 updateChartForSelection();
             }
@@ -520,7 +532,7 @@ private void showRoomPopup(View anchor, RoomWithSensorDto room) {
         }
     }
 
-    // ----------------------------- Графіки -----------------------------
+    // ───────────────────────── Charts ────────────────────────────────────────────
     private void setupChart(LineChart chart) {
         int txtColor = ContextCompat.getColor(this, R.color.weather_card_text);
         chart.getDescription().setEnabled(false);
@@ -551,15 +563,15 @@ private void showRoomPopup(View anchor, RoomWithSensorDto room) {
 
     private void loadDayDataFor(String chipId) {
         SensorDataApiService api = ApiClientMain.getClient(this).create(SensorDataApiService.class);
-        api.getDay(chipId).enqueue(new Callback<List<SensorPointDto>>() {
-            @Override public void onResponse(Call<List<SensorPointDto>> call, Response<List<SensorPointDto>> resp) {
+        api.getDay(chipId).enqueue(new Callback<>() {
+            @Override public void onResponse(@NonNull Call<List<SensorPointDto>> call, @NonNull Response<List<SensorPointDto>> resp) {
                 if (resp.isSuccessful() && resp.body() != null && !resp.body().isEmpty()) {
                     setChartDataFromApi(resp.body(), true);
                 } else {
                     chart.clear(); chart.setNoDataText("Немає даних за день");
                 }
             }
-            @Override public void onFailure(Call<List<SensorPointDto>> call, Throwable t) {
+            @Override public void onFailure(@NonNull Call<List<SensorPointDto>> call, @NonNull Throwable t) {
                 chart.clear(); chart.setNoDataText("Помилка завантаження");
             }
         });
@@ -567,15 +579,15 @@ private void showRoomPopup(View anchor, RoomWithSensorDto room) {
 
     private void loadWeekDataFor(String chipId) {
         SensorDataApiService api = ApiClientMain.getClient(this).create(SensorDataApiService.class);
-        api.getWeek(chipId).enqueue(new Callback<List<SensorPointDto>>() {
-            @Override public void onResponse(Call<List<SensorPointDto>> call, Response<List<SensorPointDto>> resp) {
+        api.getWeek(chipId).enqueue(new Callback<>() {
+            @Override public void onResponse(@NonNull Call<List<SensorPointDto>> call, @NonNull Response<List<SensorPointDto>> resp) {
                 if (resp.isSuccessful() && resp.body() != null && !resp.body().isEmpty()) {
                     setChartDataFromApi(resp.body(), false);
                 } else {
                     chart.clear(); chart.setNoDataText("Немає даних за 7 днів");
                 }
             }
-            @Override public void onFailure(Call<List<SensorPointDto>> call, Throwable t) {
+            @Override public void onFailure(@NonNull Call<List<SensorPointDto>> call, @NonNull Throwable t) {
                 chart.clear(); chart.setNoDataText("Помилка завантаження");
             }
         });
@@ -607,29 +619,7 @@ private void showRoomPopup(View anchor, RoomWithSensorDto room) {
             labels.add(isDay ? local.toLocalTime().format(hhmm) : local.toLocalDate().format(ddMM));
         }
 
-        LineDataSet dataSet;
-        if (showTemperature) {
-            dataSet = new LineDataSet(temp, "Температура °C");
-            dataSet.setColor(Color.RED);
-            dataSet.setCircleColor(Color.RED);
-            dataSet.setValueFormatter(new com.github.mikephil.charting.formatter.ValueFormatter() {
-                @Override public String getFormattedValue(float value) {
-                    return String.format(Locale.getDefault(), "%.0f°", value);
-                }
-            });
-        } else {
-            dataSet = new LineDataSet(hum, "Вологість %");
-            dataSet.setColor(Color.BLUE);
-            dataSet.setCircleColor(Color.BLUE);
-            dataSet.setValueFormatter(new com.github.mikephil.charting.formatter.ValueFormatter() {
-                @Override public String getFormattedValue(float value) {
-                    return String.format(Locale.getDefault(), "%.0f%%", value);
-                }
-            });
-        }
-        dataSet.setDrawValues(true);
-        dataSet.setValueTextColor(txtColor);
-        dataSet.setValueTextSize(10f);
+        LineDataSet dataSet = getLineDataSet(temp, hum, txtColor);
 
         XAxis x = chart.getXAxis();
         x.setLabelCount(Math.min(6, labels.size()), true);
@@ -683,30 +673,72 @@ private void showRoomPopup(View anchor, RoomWithSensorDto room) {
         chart.invalidate();
     }
 
-    // ----------------------------- Дозволи -----------------------------
-    private void requestAllPermissions() {
-        String[] permissions = new String[] {
-                Manifest.permission.ACCESS_FINE_LOCATION,
-                Manifest.permission.ACCESS_COARSE_LOCATION,
-                Manifest.permission.BLUETOOTH_SCAN,
-                Manifest.permission.BLUETOOTH_CONNECT,
-                Manifest.permission.BLUETOOTH_ADVERTISE,
-                Manifest.permission.POST_NOTIFICATIONS
-        };
-
-        List<String> toRequest = new ArrayList<>();
-        for (String perm : permissions) {
-            if (ActivityCompat.checkSelfPermission(this, perm) != PackageManager.PERMISSION_GRANTED) {
-                toRequest.add(perm);
-            }
+    @NonNull
+    private LineDataSet getLineDataSet(List<Entry> temp, List<Entry> hum, int txtColor) {
+        LineDataSet dataSet;
+        if (showTemperature) {
+            dataSet = new LineDataSet(temp, "Температура °C");
+            dataSet.setColor(Color.RED);
+            dataSet.setCircleColor(Color.RED);
+            dataSet.setValueFormatter(new com.github.mikephil.charting.formatter.ValueFormatter() {
+                @Override public String getFormattedValue(float value) {
+                    return String.format(Locale.getDefault(), "%.0f°", value);
+                }
+            });
+        } else {
+            dataSet = new LineDataSet(hum, "Вологість %");
+            dataSet.setColor(Color.BLUE);
+            dataSet.setCircleColor(Color.BLUE);
+            dataSet.setValueFormatter(new com.github.mikephil.charting.formatter.ValueFormatter() {
+                @Override public String getFormattedValue(float value) {
+                    return String.format(Locale.getDefault(), "%.0f%%", value);
+                }
+            });
         }
+        dataSet.setDrawValues(true);
+        dataSet.setValueTextColor(txtColor);
+        dataSet.setValueTextSize(10f);
+        return dataSet;
+    }
+
+    // ───────────────────────── Permissions (API-safe) ────────────────────────────
+    private void requestAllPermissions() {
+        final List<String> toRequest = new ArrayList<>();
+
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+            // ≤ Android 11: геолокація + старі BT
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED)
+                toRequest.add(Manifest.permission.ACCESS_FINE_LOCATION);
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED)
+                toRequest.add(Manifest.permission.ACCESS_COARSE_LOCATION);
+
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH) != PackageManager.PERMISSION_GRANTED)
+                toRequest.add(Manifest.permission.BLUETOOTH);
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_ADMIN) != PackageManager.PERMISSION_GRANTED)
+                toRequest.add(Manifest.permission.BLUETOOTH_ADMIN);
+        } else {
+            // Android 12+
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED)
+                toRequest.add(Manifest.permission.BLUETOOTH_SCAN);
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED)
+                toRequest.add(Manifest.permission.BLUETOOTH_CONNECT);
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_ADVERTISE) != PackageManager.PERMISSION_GRANTED)
+                toRequest.add(Manifest.permission.BLUETOOTH_ADVERTISE);
+        }
+
+        // Android 13+ нотифікації
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED)
+                toRequest.add(Manifest.permission.POST_NOTIFICATIONS);
+        }
+
         if (!toRequest.isEmpty()) {
             ActivityCompat.requestPermissions(this, toRequest.toArray(new String[0]), PERMISSION_REQUEST_CODE);
         }
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == PERMISSION_REQUEST_CODE) {
             for (int i = 0; i < permissions.length; i++) {
@@ -719,15 +751,9 @@ private void showRoomPopup(View anchor, RoomWithSensorDto room) {
         }
     }
 
-    // ----------------------------- Хелпери -----------------------------
-    private void refreshAll() {
-        weatherActivity.startWeatherUpdates();
-        loadRoomsFromServer();
-        updateChartForSelection();
-    }
-
-    private float dp(float v) {
-        return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v, getResources().getDisplayMetrics());
+    // ───────────────────────── Helpers ───────────────────────────────────────────
+    private float dp() {
+        return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, (float) 2.0, getResources().getDisplayMetrics());
     }
 
     private String getSavedUsername() {
@@ -757,8 +783,8 @@ private void showRoomPopup(View anchor, RoomWithSensorDto room) {
         if (userId <= 0) return;
 
         UserApiService api = ApiClientMain.getClient(this).create(UserApiService.class);
-        api.getUsername(userId).enqueue(new retrofit2.Callback<String>() {
-            @Override public void onResponse(retrofit2.Call<String> call, retrofit2.Response<String> resp) {
+        api.getUsername(userId).enqueue(new retrofit2.Callback<>() {
+            @Override public void onResponse(@NonNull retrofit2.Call<String> call, @NonNull retrofit2.Response<String> resp) {
                 if (resp.isSuccessful() && resp.body() != null) {
                     String fresh = resp.body().trim();
                     setHello(title, fresh);
@@ -770,7 +796,7 @@ private void showRoomPopup(View anchor, RoomWithSensorDto room) {
                     handleUnauthorized();
                 }
             }
-            @Override public void onFailure(retrofit2.Call<String> call, Throwable t) { /* ignore */ }
+            @Override public void onFailure(@NonNull retrofit2.Call<String> call, @NonNull Throwable t) { /* ignore */ }
         });
     }
 
@@ -788,12 +814,5 @@ private void showRoomPopup(View anchor, RoomWithSensorDto room) {
         i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(i);
         finish();
-    }
-
-    // ETag local store (узгоджено зі сховищем у EditRoomDialogFragment)
-    private static void saveEtagForChip(Context ctx, String chipId, String etag) {
-        if (TextUtils.isEmpty(chipId) || TextUtils.isEmpty(etag)) return;
-        ctx.getSharedPreferences("etag_store", Context.MODE_PRIVATE)
-                .edit().putString("etag_" + chipId, etag).apply();
     }
 }

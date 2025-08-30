@@ -1,7 +1,7 @@
 package com.example.sensedata.network;
 
 import com.example.sensedata.model.room.RoomWithSensorDto;
-import com.example.sensedata.model.sensorownership.SensorOwnershipRequestDto;
+import com.example.sensedata.model.sensorownership.SensorOwnershipCreateDto;
 import com.example.sensedata.model.sensorownership.SensorOwnershipUpdateDto;
 
 import java.util.List;
@@ -19,7 +19,7 @@ public interface RoomApiService {
 
     // Створити ownership (username + chipId + roomName + imageName)
     @POST("DisplayData/ownership")
-    Call<RoomWithSensorDto> createOwnership(@Body SensorOwnershipRequestDto body);
+    Call<RoomWithSensorDto> createOwnership(@Body SensorOwnershipCreateDto body);
 
     // Усі кімнати користувача
     @GET("DisplayData/byUser/{userId}")

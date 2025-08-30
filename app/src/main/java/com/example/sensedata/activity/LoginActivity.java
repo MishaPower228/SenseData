@@ -1,4 +1,4 @@
-package com.example.sensedata.user;
+package com.example.sensedata.activity;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -13,9 +13,8 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 
+
 import com.example.sensedata.R;
-import com.example.sensedata.activity.ImmersiveActivity;
-import com.example.sensedata.activity.MainActivity;
 import com.example.sensedata.model.user.LoginRequest;
 import com.example.sensedata.model.user.UserResponse;
 import com.example.sensedata.network.ApiClientMain;

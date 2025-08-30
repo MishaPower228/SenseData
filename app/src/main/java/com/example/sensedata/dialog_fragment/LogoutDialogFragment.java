@@ -15,7 +15,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.DialogFragment;
 
 import com.example.sensedata.R;
-import com.example.sensedata.user.LoginActivity;
+import com.example.sensedata.activity.LoginActivity;
 import com.google.android.material.button.MaterialButton;
 
 public class LogoutDialogFragment extends DialogFragment {
@@ -25,8 +25,7 @@ public class LogoutDialogFragment extends DialogFragment {
     @NonNull
     @Override
     public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
-        View view = LayoutInflater.from(requireContext())
-                .inflate(R.layout.dialog_logout, null, false);
+        View view = getLayoutInflater().inflate(R.layout.dialog_logout, null, false);
 
         MaterialButton btnCancel  = view.findViewById(R.id.btnCancel);
         MaterialButton btnConfirm = view.findViewById(R.id.btnConfirm);

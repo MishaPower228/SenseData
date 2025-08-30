@@ -3,7 +3,6 @@ package com.example.sensedata.dialog_fragment;
 import android.app.Dialog;
 import android.content.Context;
 import android.os.Bundle;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -15,21 +14,23 @@ import androidx.fragment.app.DialogFragment;
 import com.example.sensedata.R;
 import com.example.sensedata.network.ApiClientMain;
 import com.example.sensedata.network.RoomApiService;
-import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-/** Діалог підтвердження видалення з кастомними кнопками. */
+/** Діалог підтвердження видалення кімнати з кастомними кнопками. */
 public class DeleteRoomDialogFragment extends DialogFragment {
 
     public static final String TAG = "DeleteRoomDialog";
     private static final String ARG_CHIP = "chipId";
     private static final String ARG_NAME = "roomName";
 
-    public interface OnRoomsChangedListener { void onRoomsChanged(); }
+    public interface OnRoomsChangedListener {
+        void onRoomsChanged();
+    }
 
     public static DeleteRoomDialogFragment newInstance(String chipId, String roomName) {
         Bundle b = new Bundle();
@@ -40,17 +41,17 @@ public class DeleteRoomDialogFragment extends DialogFragment {
         return f;
     }
 
-    @NonNull @Override
+    @NonNull
+    @Override
     public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
-        View view = LayoutInflater.from(requireContext())
-                .inflate(R.layout.dialog_delete_room, null, false);
+        View view = getLayoutInflater().inflate(R.layout.dialog_delete_room, null, false);
 
-        final String chipId   = requireArguments().getString(ARG_CHIP, null);
+        final String chipId = requireArguments().getString(ARG_CHIP, null);
         final String roomName = requireArguments().getString(ARG_NAME, null);
 
         TextView tvMsg = view.findViewById(R.id.tvDeleteMsg);
         if (roomName != null && !roomName.trim().isEmpty()) {
-            tvMsg.setText("Видалити \"" + roomName + "\"? Це відв'яже пристрій від вашого акаунта.");
+            tvMsg.setText(getString(R.string.delete_room_message, roomName));
         }
 
         MaterialButton btnCancel = view.findViewById(R.id.btnCancel);
@@ -60,53 +61,48 @@ public class DeleteRoomDialogFragment extends DialogFragment {
         btnDelete.setOnClickListener(v -> {
             int userId = getSavedUserId(requireContext());
             if (userId == -1 || chipId == null || chipId.trim().isEmpty()) {
-                Toast.makeText(requireContext(), "Немає userId або chipId", Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), R.string.error_no_ids, Toast.LENGTH_SHORT).show();
                 return;
             }
 
-            // Заблокуємо кнопки на час запиту
             setEnabled(btnCancel, false);
             setEnabled(btnDelete, false);
 
             RoomApiService api = ApiClientMain.getClient(requireContext()).create(RoomApiService.class);
-            api.deleteOwnership(chipId, userId).enqueue(new Callback<Void>() {
-                @Override public void onResponse(Call<Void> call, Response<Void> resp) {
+            api.deleteOwnership(chipId, userId).enqueue(new Callback<>() {
+                @Override
+                public void onResponse(@NonNull Call<Void> call, @NonNull Response<Void> resp) {
                     if (!isAdded()) return;
 
                     int code = resp.code();
                     if (resp.isSuccessful()) {
                         removeEtagForChip(requireContext(), chipId);
-                        Toast.makeText(requireContext(), "Кімнату видалено", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(requireContext(), R.string.room_deleted, Toast.LENGTH_SHORT).show();
                         notifyRoomsChanged();
                         dismiss();
                     } else {
-                        // Типові коди від бекенда – дамо дружнє повідомлення
                         switch (code) {
                             case 404:
-                                // вже немає такого ownership — вважаємо видаленим
                                 removeEtagForChip(requireContext(), chipId);
-                                Toast.makeText(requireContext(), "Кімнату вже видалено", Toast.LENGTH_SHORT).show();
+                                Toast.makeText(requireContext(), R.string.room_already_deleted, Toast.LENGTH_SHORT).show();
                                 notifyRoomsChanged();
                                 dismiss();
                                 break;
                             case 412:
-                                Toast.makeText(requireContext(),
-                                        "Дані застаріли (ETag). Оновіть список і спробуйте ще раз.",
-                                        Toast.LENGTH_LONG).show();
+                                Toast.makeText(requireContext(), R.string.error_outdated_data, Toast.LENGTH_LONG).show();
                                 setEnabled(btnCancel, true);
                                 setEnabled(btnDelete, true);
                                 notifyRoomsChanged();
                                 break;
                             case 409:
-                                Toast.makeText(requireContext(),
-                                        "Конфлікт стану. Оновіть список кімнат.", Toast.LENGTH_LONG).show();
+                                Toast.makeText(requireContext(), R.string.error_conflict, Toast.LENGTH_LONG).show();
                                 setEnabled(btnCancel, true);
                                 setEnabled(btnDelete, true);
                                 notifyRoomsChanged();
                                 break;
                             default:
                                 Toast.makeText(requireContext(),
-                                        "Помилка DELETE: " + code, Toast.LENGTH_SHORT).show();
+                                        getString(R.string.error_delete_code, code), Toast.LENGTH_SHORT).show();
                                 setEnabled(btnCancel, true);
                                 setEnabled(btnDelete, true);
                                 break;
@@ -114,9 +110,11 @@ public class DeleteRoomDialogFragment extends DialogFragment {
                     }
                 }
 
-                @Override public void onFailure(Call<Void> call, Throwable t) {
+                @Override
+                public void onFailure(@NonNull Call<Void> call, @NonNull Throwable t) {
                     if (!isAdded()) return;
-                    Toast.makeText(requireContext(), "DELETE збій: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(requireContext(),
+                            getString(R.string.error_delete_crash, t.getMessage()), Toast.LENGTH_SHORT).show();
                     setEnabled(btnCancel, true);
                     setEnabled(btnDelete, true);
                 }
@@ -135,11 +133,11 @@ public class DeleteRoomDialogFragment extends DialogFragment {
         }
     }
 
-    // prefs
     private static int getSavedUserId(Context ctx) {
         return ctx.getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE)
                 .getInt("userId", -1);
     }
+
     private static void removeEtagForChip(Context ctx, String chipId) {
         ctx.getSharedPreferences("etag_store", Context.MODE_PRIVATE)
                 .edit().remove("etag_" + chipId).apply();

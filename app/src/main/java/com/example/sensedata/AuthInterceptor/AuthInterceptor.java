@@ -3,6 +3,8 @@ package com.example.sensedata.AuthInterceptor;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import androidx.annotation.NonNull;
+
 import java.io.IOException;
 
 import okhttp3.Interceptor;
@@ -16,6 +18,7 @@ public class AuthInterceptor implements Interceptor {
         prefs = context.getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE);
     }
 
+    @NonNull
     @Override
     public Response intercept(Chain chain) throws IOException {
         String token = prefs.getString("accessToken", null);

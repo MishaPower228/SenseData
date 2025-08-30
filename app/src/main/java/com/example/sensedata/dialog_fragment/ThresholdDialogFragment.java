@@ -5,7 +5,6 @@ import android.content.Context;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.TypedValue;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -32,6 +31,7 @@ import com.google.android.material.slider.RangeSlider;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -40,6 +40,7 @@ import retrofit2.Response;
 public class ThresholdDialogFragment extends DialogFragment {
 
     public static final String TAG = "ThresholdDialog";
+    private static final float CHIP_STROKE_WIDTH_DP = 2f;
 
     private String chipId;
     private ChipGroup chipGroupRooms;
@@ -49,15 +50,14 @@ public class ThresholdDialogFragment extends DialogFragment {
     @NonNull
     @Override
     public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
-        View v = LayoutInflater.from(requireContext())
-                .inflate(R.layout.dialog_thresholds, null, false);
+        View v = getLayoutInflater().inflate(R.layout.dialog_thresholds, null, false);
 
         chipId = getArguments() != null ? getArguments().getString("chipId") : null;
 
-        valueTemp   = v.findViewById(R.id.valueTemp);
-        valueHum    = v.findViewById(R.id.valueHum);
-        sliderTemp  = v.findViewById(R.id.sliderTemp);
-        sliderHum   = v.findViewById(R.id.sliderHum);
+        valueTemp = v.findViewById(R.id.valueTemp);
+        valueHum = v.findViewById(R.id.valueHum);
+        sliderTemp = v.findViewById(R.id.sliderTemp);
+        sliderHum = v.findViewById(R.id.sliderHum);
         chipGroupRooms = v.findViewById(R.id.chipGroupThresholdRooms);
 
         if (chipId == null || chipId.trim().isEmpty()) {
@@ -74,14 +74,14 @@ public class ThresholdDialogFragment extends DialogFragment {
                 valueHum.setText(formatHum(slider.getValues())));
 
         MaterialButton btnCancel = v.findViewById(R.id.btnCancel);
-        MaterialButton btnSave   = v.findViewById(R.id.btnSave);
+        MaterialButton btnSave = v.findViewById(R.id.btnSave);
 
         btnCancel.setOnClickListener(view -> dismiss());
         btnSave.setOnClickListener(view -> {
             if (chipId == null || chipId.trim().isEmpty()) {
                 int checkedId = chipGroupRooms.getCheckedChipId();
                 if (checkedId == View.NO_ID) {
-                    Toast.makeText(requireContext(), "Оберіть кімнату", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(requireContext(), R.string.error_select_room, Toast.LENGTH_SHORT).show();
                     return;
                 }
                 Chip selectedChip = chipGroupRooms.findViewById(checkedId);
@@ -107,9 +107,10 @@ public class ThresholdDialogFragment extends DialogFragment {
         if (userId == -1) return;
 
         RoomApiService api = ApiClientMain.getClient(requireContext()).create(RoomApiService.class);
-        api.getAllRooms(userId).enqueue(new Callback<List<RoomWithSensorDto>>() {
+        api.getAllRooms(userId).enqueue(new Callback<>() {
             @Override
-            public void onResponse(Call<List<RoomWithSensorDto>> call, Response<List<RoomWithSensorDto>> resp) {
+            public void onResponse(@NonNull Call<List<RoomWithSensorDto>> call,
+                                   @NonNull Response<List<RoomWithSensorDto>> resp) {
                 if (!isAdded() || resp.body() == null) return;
                 List<RoomWithSensorDto> rooms = new ArrayList<>(resp.body());
                 chipGroupRooms.removeAllViews();
@@ -133,7 +134,7 @@ public class ThresholdDialogFragment extends DialogFragment {
                             AppCompatResources.getColorStateList(requireContext(), R.color.chip_bg_selector));
                     chip.setTextColor(
                             AppCompatResources.getColorStateList(requireContext(), R.color.chip_text_selector));
-                    chip.setChipStrokeWidth(dp(2f));
+                    chip.setChipStrokeWidth(dpChipStrokeWidth());
                     chip.setChipStrokeColor(
                             AppCompatResources.getColorStateList(requireContext(), R.color.chip_stroke_selector));
                     chip.setRippleColor(
@@ -147,7 +148,10 @@ public class ThresholdDialogFragment extends DialogFragment {
                     });
                 }
             }
-            @Override public void onFailure(Call<List<RoomWithSensorDto>> call, Throwable t) { }
+
+            @Override
+            public void onFailure(@NonNull Call<List<RoomWithSensorDto>> call,
+                                  @NonNull Throwable t) { }
         });
     }
 
@@ -155,9 +159,10 @@ public class ThresholdDialogFragment extends DialogFragment {
     private void loadThresholdsFromServer(String chipId) {
         SettingsApiService api = ApiClientMain.getClient(requireContext()).create(SettingsApiService.class);
 
-        api.getEffectiveByChip(chipId).enqueue(new Callback<List<EffectiveSettingDto>>() {
+        api.getEffectiveByChip(chipId).enqueue(new Callback<>() {
             @Override
-            public void onResponse(Call<List<EffectiveSettingDto>> call, Response<List<EffectiveSettingDto>> resp) {
+            public void onResponse(@NonNull Call<List<EffectiveSettingDto>> call,
+                                   @NonNull Response<List<EffectiveSettingDto>> resp) {
                 if (resp.isSuccessful() && resp.body() != null) {
                     for (EffectiveSettingDto dto : resp.body()) {
                         if ("temperature".equalsIgnoreCase(dto.parameterName)) {
@@ -171,11 +176,14 @@ public class ThresholdDialogFragment extends DialogFragment {
                     }
                 }
             }
-            @Override public void onFailure(Call<List<EffectiveSettingDto>> call, Throwable t) { }
+
+            @Override
+            public void onFailure(@NonNull Call<List<EffectiveSettingDto>> call,
+                                  @NonNull Throwable t) { }
         });
     }
 
-    private void applySliderValues(RangeSlider slider, Float low, Float high) {
+    private void applySliderValues(@NonNull RangeSlider slider, @Nullable Float low, @Nullable Float high) {
         if (low == null || high == null) return;
         float min = slider.getValueFrom();
         float max = slider.getValueTo();
@@ -191,11 +199,11 @@ public class ThresholdDialogFragment extends DialogFragment {
         List<Float> h = sliderHum.getValues();
 
         if (t.get(0) >= t.get(1)) {
-            Toast.makeText(requireContext(), "Температура: мін має бути < макс", Toast.LENGTH_SHORT).show();
+            Toast.makeText(requireContext(), R.string.error_temp_range, Toast.LENGTH_SHORT).show();
             return false;
         }
         if (h.get(0) >= h.get(1)) {
-            Toast.makeText(requireContext(), "Вологість: мін має бути < макс", Toast.LENGTH_SHORT).show();
+            Toast.makeText(requireContext(), R.string.error_hum_range, Toast.LENGTH_SHORT).show();
             return false;
         }
         return true;
@@ -205,37 +213,44 @@ public class ThresholdDialogFragment extends DialogFragment {
         List<Float> t = sliderTemp.getValues();
         List<Float> h = sliderHum.getValues();
 
-        AdjustmentAbsoluteRequestDto body = new AdjustmentAbsoluteRequestDto(
-                Arrays.asList(
-                        new AdjustmentAbsoluteRequestDto.Item("temperature", t.get(0), t.get(1)),
-                        new AdjustmentAbsoluteRequestDto.Item("humidity", h.get(0), h.get(1))
-                )
-        );
+        AdjustmentAbsoluteRequestDto body = new AdjustmentAbsoluteRequestDto(Arrays.asList(
+                new AdjustmentAbsoluteRequestDto.Item("temperature", t.get(0), t.get(1)),
+                new AdjustmentAbsoluteRequestDto.Item("humidity", h.get(0), h.get(1))
+        ));
 
         SettingsApiService api = ApiClientMain.getClient(requireContext()).create(SettingsApiService.class);
-        api.postAdjustmentsForChip(chipId, body).enqueue(new Callback<AdjustmentAbsoluteResponseDto>() {
-            @Override public void onResponse(Call<AdjustmentAbsoluteResponseDto> call, Response<AdjustmentAbsoluteResponseDto> response) {
+        api.postAdjustmentsForChip(chipId, body).enqueue(new Callback<>() {
+            @Override
+            public void onResponse(@NonNull Call<AdjustmentAbsoluteResponseDto> call,
+                                   @NonNull Response<AdjustmentAbsoluteResponseDto> response) {
                 if (!isAdded()) return;
                 Context ctx = getContext();
                 if (ctx == null) return;
                 Toast.makeText(ctx,
-                        response.isSuccessful() ? "Пороги збережено" : "Помилка: " + response.code(),
+                        response.isSuccessful()
+                                ? getString(R.string.thresholds_saved)
+                                : getString(R.string.error_code, response.code()),
                         Toast.LENGTH_SHORT).show();
             }
-            @Override public void onFailure(Call<AdjustmentAbsoluteResponseDto> call, Throwable t) {
+
+            @Override
+            public void onFailure(@NonNull Call<AdjustmentAbsoluteResponseDto> call,
+                                  @NonNull Throwable t) {
                 if (!isAdded()) return;
                 Context ctx = getContext();
                 if (ctx == null) return;
-                Toast.makeText(ctx, "Помилка мережі: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                Toast.makeText(ctx, getString(R.string.network_error, t.getMessage()), Toast.LENGTH_SHORT).show();
             }
         });
     }
 
     private String formatTemp(List<Float> values) {
-        return String.format("%.1f – %.1f °C", values.get(0), values.get(1));
+        return String.format(Locale.getDefault(), "%.1f – %.1f °C", values.get(0), values.get(1));
     }
+
     private String formatHum(List<Float> values) {
-        return String.format("%d – %d %%", Math.round(values.get(0)), Math.round(values.get(1)));
+        return String.format(Locale.getDefault(), "%d – %d %%",
+                Math.round(values.get(0)), Math.round(values.get(1)));
     }
 
     public static ThresholdDialogFragment newInstance(@Nullable String chipId) {
@@ -246,10 +261,10 @@ public class ThresholdDialogFragment extends DialogFragment {
         return f;
     }
 
-    private float dp(float value) {
+    private float dpChipStrokeWidth() {
         return TypedValue.applyDimension(
                 TypedValue.COMPLEX_UNIT_DIP,
-                value,
+                CHIP_STROKE_WIDTH_DP,
                 requireContext().getResources().getDisplayMetrics()
         );
     }

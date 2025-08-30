@@ -1,5 +1,6 @@
 package com.example.sensedata.adapter;
 
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -35,41 +36,27 @@ public class RoomAdapter extends ListAdapter<RoomWithSensorDto, RoomAdapter.Room
         super(DIFF);
         this.clickListener = clickListener;
         this.longClickListener = longClickListener;
-        setHasStableIds(true); // 👈 стабільні ID для кращих анімацій/перемальовування
+        setHasStableIds(true);
     }
 
     // ==== DiffUtil ====
-    private static final DiffUtil.ItemCallback<RoomWithSensorDto> DIFF =
-            new DiffUtil.ItemCallback<RoomWithSensorDto>() {
-                @Override
-                public boolean areItemsTheSame(@NonNull RoomWithSensorDto oldItem,
-                                               @NonNull RoomWithSensorDto newItem) {
-                    return safeEq(oldItem.getChipId(), newItem.getChipId());
-                }
-                @Override
-                public boolean areContentsTheSame(@NonNull RoomWithSensorDto oldItem,
-                                                  @NonNull RoomWithSensorDto newItem) {
-                    // Порівнюємо тільки те, що реально показуємо
-                    return safeEq(oldItem.getRoomName(), newItem.getRoomName())
-                            && safeEq(oldItem.getImageName(), newItem.getImageName())
-                            && sameTempUi(oldItem.getTemperature(), newItem.getTemperature())
-                            && sameHumUi(oldItem.getHumidity(), newItem.getHumidity());
-                }
-            };
+    private static final DiffUtil.ItemCallback<RoomWithSensorDto> DIFF = new DiffUtil.ItemCallback<>() {
+        @Override
+        public boolean areItemsTheSame(@NonNull RoomWithSensorDto oldItem,
+                                       @NonNull RoomWithSensorDto newItem) {
+            return Objects.equals(oldItem.getChipId(), newItem.getChipId());
+        }
+        @Override
+        public boolean areContentsTheSame(@NonNull RoomWithSensorDto oldItem,
+                                          @NonNull RoomWithSensorDto newItem) {
+            return Objects.equals(oldItem.getRoomName(), newItem.getRoomName())
+                    && Objects.equals(oldItem.getImageName(), newItem.getImageName())
+                    && sameRounded(oldItem.getTemperature(), newItem.getTemperature())
+                    && sameRounded(oldItem.getHumidity(), newItem.getHumidity());
+        }
+    };
 
-    private static boolean safeEq(Object a, Object b) { return Objects.equals(a, b); }
-
-    // Температуру показуємо як (int)Math.round(...) -> порівнюємо так само
-    private static boolean sameTempUi(Double a, Double b) {
-        if (a == null && b == null) return true;
-        if (a == null || b == null) return false;
-        if (a.isNaN() && b.isNaN()) return true;
-        if (a.isNaN() || b.isNaN()) return false;
-        return Math.round(a) == Math.round(b);
-    }
-
-    // Вологість показуємо як "%.0f %%" -> порівнюємо округлені значення
-    private static boolean sameHumUi(Double a, Double b) {
+    private static boolean sameRounded(Double a, Double b) {
         if (a == null && b == null) return true;
         if (a == null || b == null) return false;
         if (a.isNaN() && b.isNaN()) return true;
@@ -82,8 +69,7 @@ public class RoomAdapter extends ListAdapter<RoomWithSensorDto, RoomAdapter.Room
     public long getItemId(int position) {
         RoomWithSensorDto item = getItem(position);
         String chip = item == null ? null : item.getChipId();
-        if (chip == null) return position; // fallback
-        // перетворюємо hashCode у беззнаковий long для стабільності
+        if (chip == null) return position;
         return (long) chip.hashCode() & 0x00000000ffffffffL;
     }
 
@@ -101,13 +87,14 @@ public class RoomAdapter extends ListAdapter<RoomWithSensorDto, RoomAdapter.Room
         holder.bind(getItem(position), clickListener, longClickListener);
     }
 
-    static class RoomViewHolder extends RecyclerView.ViewHolder {
+    /** Має бути public, інакше студія лаялась: "exposed outside visibility scope". */
+    public static class RoomViewHolder extends RecyclerView.ViewHolder {
         private final TextView textRoomName;
         private final TextView textTemp;
         private final TextView textHumidity;
         private final ImageView imageRoom;
 
-        RoomViewHolder(@NonNull View itemView) {
+        public RoomViewHolder(@NonNull View itemView) {
             super(itemView);
             textRoomName = itemView.findViewById(R.id.textRoom);
             textTemp     = itemView.findViewById(R.id.textTemperature);
@@ -115,58 +102,64 @@ public class RoomAdapter extends ListAdapter<RoomWithSensorDto, RoomAdapter.Room
             imageRoom    = itemView.findViewById(R.id.roomImage);
         }
 
-        void bind(RoomWithSensorDto room,
-                  OnRoomClickListener clickListener,
-                  OnRoomLongClickListener longClickListener) {
+        void bind(@NonNull RoomWithSensorDto room,
+                  @NonNull OnRoomClickListener clickListener,
+                  @NonNull OnRoomLongClickListener longClickListener) {
 
-            // ---- Текст ----
-            String roomName = room.getRoomName() == null ? "Room" : room.getRoomName();
+            final var ctx = itemView.getContext();
+
+            // Назва кімнати
+            String roomName = room.getRoomName();
+            if (roomName == null || roomName.trim().isEmpty()) {
+                roomName = ctx.getString(R.string.room_default_name);
+            }
             textRoomName.setText(roomName);
 
-            // Температура (округлення до цілого, як і показ у UI)
-            Double t = room.getTemperature();
-            String tStr = (t == null || t.isNaN())
-                    ? "--"
-                    : ((int) Math.round(t)) + " °C";
+            // Температура (цілі градуси)
+            String tText = ctx.getString(
+                    R.string.temp_value,
+                    (room.getTemperature() == null || room.getTemperature().isNaN())
+                            ? ctx.getString(R.string.value_dash)
+                            : String.format(Locale.getDefault(), "%d °C", Math.round(room.getTemperature()))
+            );
+            textTemp.setText(tText);
 
-            // Вологість (без знаків після коми у відсотках)
-            Double h = room.getHumidity();
-            String hStr = (h == null || h.isNaN())
-                    ? "--"
-                    : String.format(Locale.getDefault(), "%.0f %%", h);
+            // Вологість (цілі відсотки)
+            String hText = ctx.getString(
+                    R.string.humidity_value,
+                    (room.getHumidity() == null || room.getHumidity().isNaN())
+                            ? ctx.getString(R.string.value_dash)
+                            : String.format(Locale.getDefault(), "%.0f %%", room.getHumidity())
+            );
+            textHumidity.setText(hText);
 
-            textTemp.setText("\uD83C\uDF21" + tStr);  // 🌡
-            textHumidity.setText("\uD83D\uDCA7" + hStr); // 💧
-
-            // ---- Зображення ----
+            // Зображення
             imageRoom.setImageResource(getImageResId(room.getImageName()));
             imageRoom.setContentDescription(roomName);
 
-            // ---- Кліки ----
-            itemView.setOnClickListener(v -> {
-                if (clickListener != null) clickListener.onRoomClick(room);
-            });
+            // Кліки
+            itemView.setOnClickListener(v -> clickListener.onRoomClick(room));
             itemView.setOnLongClickListener(v -> {
-                if (longClickListener != null) {
-                    longClickListener.onRoomLongClick(v, room);
-                    return true; // споживаємо подію довгого натискання
-                }
-                return false;
+                longClickListener.onRoomLongClick(v, room);
+                return true;
             });
         }
 
         private int getImageResId(String imageName) {
+
+            Log.d("RoomAdapter", "Binding imageName=" + imageName);
+
             if (imageName == null) return R.drawable.livingroom;
-            switch (imageName) {
-                case "kitchen":        return R.drawable.kitchen;
-                case "livingroom":    return R.drawable.livingroom;
-                case "bathroom":  return R.drawable.bathroom;
-                case "balkon":     return R.drawable.balkon;
-                case "bedroom":        return R.drawable.bedroom;
-                case "homeoffice":       return R.drawable.homeoffice;
-                //case "kids_room":      return R.drawable.kids_room;     // опційно
-                default:               return R.drawable.livingroom;
-            }
+            return switch (imageName) {
+                case "kitchen"    -> R.drawable.kitchen;
+                case "livingroom" -> R.drawable.livingroom;
+                case "bathroom"   -> R.drawable.bathroom;
+                case "balkon"       -> R.drawable.balkon;
+                case "bedroom"    -> R.drawable.bedroom;
+                case "homeoffice" -> R.drawable.homeoffice;
+                default           -> R.drawable.livingroom;
+            };
         }
+
     }
 }

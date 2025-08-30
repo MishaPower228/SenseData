@@ -2,7 +2,6 @@ package com.example.sensedata.dialog_fragment;
 
 import android.app.Dialog;
 import android.os.Bundle;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -35,9 +34,10 @@ public class WifiDialogFragment extends DialogFragment {
         return f;
     }
 
-    @NonNull @Override
+    @NonNull
+    @Override
     public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
-        View view = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_wifi, null, false);
+        View view = getLayoutInflater().inflate(R.layout.dialog_wifi, null, false);
 
         String chipId = getArguments() != null ? getArguments().getString(ARG_CHIP) : null;
 
@@ -49,14 +49,14 @@ public class WifiDialogFragment extends DialogFragment {
         bleActivity = new BleActivity(requireContext());
 
         View btnCancel = view.findViewById(R.id.btnCancel);
-        View btnSend   = view.findViewById(R.id.btnSend);
+        View btnSend = view.findViewById(R.id.btnSend);
 
         Runnable setBusyTrue = () -> {
             btnSend.setEnabled(false);
             btnCancel.setEnabled(false);
             etSsid.setEnabled(false);
             etPass.setEnabled(false);
-            tvStatus.setText("Сканую ESP32…");
+            tvStatus.setText(getString(R.string.scanning_esp32));
             tvStatus.setVisibility(View.VISIBLE);
             prog.setVisibility(View.VISIBLE);
         };
@@ -71,21 +71,39 @@ public class WifiDialogFragment extends DialogFragment {
 
         btnCancel.setOnClickListener(v -> dismiss());
         btnSend.setOnClickListener(v -> {
-            String ssid = etSsid.getText()==null ? "" : etSsid.getText().toString().trim();
-            String pass = etPass.getText()==null ? "" : etPass.getText().toString();
-            if (ssid.isEmpty()) { etSsid.setError("Введіть SSID"); return; }
-            if (chipId == null || chipId.trim().isEmpty()) { Toast.makeText(requireContext(),"chipId порожній",Toast.LENGTH_SHORT).show(); return; }
+            String ssid = etSsid.getText() == null ? "" : etSsid.getText().toString().trim();
+            String pass = etPass.getText() == null ? "" : etPass.getText().toString();
+            if (ssid.isEmpty()) {
+                etSsid.setError(getString(R.string.error_enter_ssid));
+                return;
+            }
+            if (chipId == null || chipId.trim().isEmpty()) {
+                Toast.makeText(requireContext(), R.string.error_chipid_empty, Toast.LENGTH_SHORT).show();
+                return;
+            }
 
-            if (!bleActivity.isBluetoothSupported()) { Toast.makeText(requireContext(),"BLE недоступний",Toast.LENGTH_SHORT).show(); return; }
-            if (!bleActivity.isBluetoothEnabled()) { startActivity(bleActivity.getEnableBluetoothIntent()); return; }
-            if (!bleActivity.hasAllBlePermissions()) { bleActivity.requestAllBlePermissions(requireActivity(), 42); return; }
+            if (bleActivity.isBluetoothSupported()) {
+                Toast.makeText(requireContext(), R.string.error_ble_not_supported, Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (bleActivity.isBluetoothEnabled()) {
+                startActivity(bleActivity.getEnableBluetoothIntent());
+                return;
+            }
+            if (bleActivity.hasAllBlePermissions()) {
+                bleActivity.requestAllBlePermissions(requireActivity(), 42);
+                return;
+            }
 
             final String shortId = chipId.trim().toUpperCase(Locale.ROOT);
-            if (shortId.length() < 6) { Toast.makeText(requireContext(),"chipId некоректний",Toast.LENGTH_SHORT).show(); return; }
+            if (shortId.length() < 6) {
+                Toast.makeText(requireContext(), R.string.error_chipid_invalid, Toast.LENGTH_SHORT).show();
+                return;
+            }
             final String targetName = "ESP32_" + shortId;
 
             setBusyTrue.run();
-            tvStatus.setText("Сканую ESP32 (" + targetName + ")…");
+            tvStatus.setText(getString(R.string.scanning_target, targetName));
 
             bleActivity.startBleScan(4000, (names, devices) -> {
                 if (!isAdded()) return;
@@ -99,26 +117,31 @@ public class WifiDialogFragment extends DialogFragment {
                         }
                     }
                     if (target == null) {
-                        tvStatus.setText("ESP " + targetName + " не знайдено");
+                        tvStatus.setText(getString(R.string.error_target_not_found, targetName));
                         setBusyFalse.run();
                         return;
                     }
-                    tvStatus.setText("Надсилаю Wi-Fi на " + targetName + "…");
-                    try { bleActivity.stopScan(); } catch (Exception ignore) {}
+                    tvStatus.setText(getString(R.string.sending_wifi_to, targetName));
+                    try {
+                        bleActivity.stopScan();
+                    } catch (Exception ignore) {}
 
                     bleActivity.sendWifiPatchViaDevice(target, ssid, pass, new BleActivity.WifiPatchCallback() {
-                        @Override public void onSuccess() {
+                        @Override
+                        public void onSuccess() {
                             if (!isAdded()) return;
                             requireActivity().runOnUiThread(() -> {
                                 setBusyFalse.run();
-                                Toast.makeText(requireContext(), "Wi-Fi успішно оновлено", Toast.LENGTH_SHORT).show();
+                                Toast.makeText(requireContext(), R.string.wifi_updated_success, Toast.LENGTH_SHORT).show();
                                 dismiss();
                             });
                         }
-                        @Override public void onError(String message) {
+
+                        @Override
+                        public void onError(String message) {
                             if (!isAdded()) return;
                             requireActivity().runOnUiThread(() -> {
-                                tvStatus.setText(message == null ? "Помилка BLE" : message);
+                                tvStatus.setText(message == null ? getString(R.string.error_ble) : message);
                                 setBusyFalse.run();
                             });
                         }
@@ -133,8 +156,11 @@ public class WifiDialogFragment extends DialogFragment {
                 .create();
     }
 
-    @Override public void onDestroyView() {
+    @Override
+    public void onDestroyView() {
         super.onDestroyView();
-        try { if (bleActivity != null) bleActivity.stopScan(); } catch (Exception ignore) {}
+        try {
+            if (bleActivity != null) bleActivity.stopScan();
+        } catch (Exception ignore) {}
     }
 }

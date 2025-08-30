@@ -75,7 +75,7 @@
             android:paddingRight="10dp"
             android:paddingTop="4dp"
             android:paddingBottom="4dp"
-            android:text="20.0 – 24.0 °C"
+            android:text="18.0 – 25.0 °C"
             android:textColor="@color/weather_card_text"
             android:textSize="14sp" />
     </LinearLayout>
@@ -126,7 +126,7 @@
             android:paddingRight="10dp"
             android:paddingTop="4dp"
             android:paddingBottom="4dp"
-            android:text="40 – 60 %"
+            android:text="30 – 60 %"
             android:textColor="@color/weather_card_text"
             android:textSize="14sp" />
     </LinearLayout>

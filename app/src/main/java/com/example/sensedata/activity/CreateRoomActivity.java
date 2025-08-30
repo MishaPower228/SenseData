@@ -1,6 +1,5 @@
 package com.example.sensedata.activity;
 
-import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.bluetooth.BluetoothDevice;
 import android.content.Intent;
@@ -15,11 +14,12 @@ import android.widget.ImageView;
 import android.widget.Toast;
 
 import androidx.activity.OnBackPressedCallback;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.example.sensedata.R;
-import com.example.sensedata.user.LoginActivity;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.checkbox.MaterialCheckBox;
 import com.google.android.material.progressindicator.CircularProgressIndicator;
@@ -34,13 +34,10 @@ public class CreateRoomActivity extends ImmersiveActivity {
     private MaterialCheckBox checkboxReset;
     private MaterialAutoCompleteTextView dropdownDevices;
     private CircularProgressIndicator progressScan;
-    private MaterialButton btnScan, btnCreate, btnCancel;
-    private FrameLayout[] containers;
-    private ImageView[] imageViews;
+    private MaterialButton btnScan;
 
-    // ====== Данні вибору картинки ======
+    // ====== Дані вибору картинки ======
     private String selectedImage = null;
-    private int selectedIndex = -1;
 
     // ====== BLE ======
     private BleActivity bleActivity;
@@ -48,9 +45,20 @@ public class CreateRoomActivity extends ImmersiveActivity {
 
     // ====== Пермішени/BT ======
     private static final int REQ_BLE_PERMS = 2010;
-    private static final int REQ_ENABLE_BT = 2011;
     private boolean pendingScanAfterPermission = false;
     private boolean pendingScanAfterEnableBt = false;
+
+    // Activity Result API замість startActivityForResult
+    private final ActivityResultLauncher<Intent> enableBtLauncher =
+            registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+                if (result.getResultCode() == Activity.RESULT_OK && pendingScanAfterEnableBt) {
+                    pendingScanAfterEnableBt = false;
+                    ensureBleReadyAndScan();
+                } else {
+                    pendingScanAfterEnableBt = false;
+                    toast("Bluetooth не увімкнено");
+                }
+            });
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -62,9 +70,7 @@ public class CreateRoomActivity extends ImmersiveActivity {
 
         // ---- BACK (кастомна стрілка) + системний "Назад" ----
         android.widget.ImageButton btnBack = findViewById(R.id.btnBack);
-        if (btnBack != null) {
-            btnBack.setOnClickListener(v -> closeWithoutResult());
-        }
+        if (btnBack != null) btnBack.setOnClickListener(v -> closeWithoutResult());
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override public void handleOnBackPressed() { closeWithoutResult(); }
         });
@@ -80,24 +86,21 @@ public class CreateRoomActivity extends ImmersiveActivity {
         deviceAdapter = new ArrayAdapter<>(
                 this,
                 R.layout.item_dropdown_device,
-                R.id.tvDeviceName,            // важливо: id TextView з item_dropdown_device.xml
+                R.id.tvDeviceName,
                 new ArrayList<>()
         );
         dropdownDevices.setAdapter(deviceAdapter);
         dropdownDevices.setOnClickListener(v -> dropdownDevices.showDropDown());
-        dropdownDevices.setOnItemClickListener((parent, view, position, id) -> {
-            bleActivity.setSelectedDevice(position);
-        });
-        // (опційно) однаковий стиль попапу з карткою
+        dropdownDevices.setOnItemClickListener((parent, view, position, id) -> bleActivity.setSelectedDevice(position));
 
         // ---- Прогрес/кнопки ----
         progressScan = findViewById(R.id.progressScan);
         btnScan      = findViewById(R.id.btnScanBle);
-        btnCreate    = findViewById(R.id.btnCreate);
-        btnCancel    = findViewById(R.id.btnCancel);
+        MaterialButton btnCreate    = findViewById(R.id.btnCreate);
+        MaterialButton btnCancel    = findViewById(R.id.btnCancel);
 
-        // ---- Вибір картинок ----
-        containers = new FrameLayout[] {
+        // ---- Вибір картинок (локальні final масиви) ----
+        final FrameLayout[] containers = new FrameLayout[] {
                 findViewById(R.id.container1),
                 findViewById(R.id.container2),
                 findViewById(R.id.container3),
@@ -105,7 +108,7 @@ public class CreateRoomActivity extends ImmersiveActivity {
                 findViewById(R.id.container5),
                 findViewById(R.id.container6)
         };
-        imageViews = new ImageView[] {
+        final ImageView[] imageViews = new ImageView[] {
                 findViewById(R.id.img1),
                 findViewById(R.id.img2),
                 findViewById(R.id.img3),
@@ -113,7 +116,7 @@ public class CreateRoomActivity extends ImmersiveActivity {
                 findViewById(R.id.img5),
                 findViewById(R.id.img6)
         };
-        setupImageSelection();
+        setupImageSelection(containers, imageViews);
 
         // ---- Скан ----
         btnScan.setOnClickListener(v -> ensureBleReadyAndScan());
@@ -125,23 +128,19 @@ public class CreateRoomActivity extends ImmersiveActivity {
         btnCreate.setOnClickListener(v -> onCreateClick());
     }
 
-
     // ---------------------------------------
     //  UI helpers
     // ---------------------------------------
-    private void setupImageSelection() {
+    private void setupImageSelection(FrameLayout[] containers, ImageView[] imageViews) {
         for (int i = 0; i < imageViews.length; i++) {
             final int idx = i;
             imageViews[i].setOnClickListener(v -> {
-                // Скидаємо всім
                 for (FrameLayout c : containers) c.setSelected(false);
                 for (ImageView iv : imageViews) { iv.setScaleX(1f); iv.setScaleY(1f); }
 
-                // Виділяємо вибраний
                 containers[idx].setSelected(true);
                 v.setScaleX(0.95f); v.setScaleY(0.95f);
 
-                selectedIndex = idx;
                 selectedImage = (String) v.getTag();
             });
         }
@@ -165,10 +164,7 @@ public class CreateRoomActivity extends ImmersiveActivity {
         if (roomName.isEmpty()) { roomNameInput.setError("Введіть назву"); return; }
         if (ssid.isEmpty())     { ssidInput.setError("Введіть SSID"); return; }
         if (password.isEmpty()) { passwordInput.setError("Введіть пароль"); return; }
-        if (selectedImage == null) {
-            toast("Оберіть зображення кімнати");
-            return;
-        }
+        if (selectedImage == null) { toast("Оберіть зображення кімнати"); return; }
         if (!password.matches("\\A\\p{ASCII}*\\z")) {
             passwordInput.setError("Пароль має бути латиницею");
             toast("Пароль має бути латиницею");
@@ -192,10 +188,8 @@ public class CreateRoomActivity extends ImmersiveActivity {
             return;
         }
 
-        // 🔹 Показуємо користувачу, що конфігурація пішла
         toast("Надсилаємо конфігурацію на ESP32...");
 
-        // Слухач chipId → повертаємо у MainActivity
         bleActivity.setChipIdListener(chipId -> {
             Intent data = new Intent();
             data.putExtra("chipId", chipId);
@@ -205,30 +199,24 @@ public class CreateRoomActivity extends ImmersiveActivity {
             finish();
         });
 
-        // Відправляємо конфіг
         bleActivity.sendConfigToEsp32ViaDevice(
                 device, roomName, selectedImage, ssid, password, username, reset
         );
     }
 
     private void ensureBleReadyAndScan() {
-        if (!bleActivity.isBluetoothSupported()) {
-            toast("BLE недоступний на цьому пристрої");
-            return;
-        }
-        if (!bleActivity.isBluetoothEnabled()) {
-            // Попросимо увімкнути BT
+        if (bleActivity.isBluetoothSupported()) { toast("BLE недоступний на цьому пристрої"); return; }
+        if (bleActivity.isBluetoothEnabled()) {
             pendingScanAfterEnableBt = true;
-            startActivityForResult(bleActivity.getEnableBluetoothIntent(), REQ_ENABLE_BT);
+            enableBtLauncher.launch(bleActivity.getEnableBluetoothIntent()); // <-- новий API
             return;
         }
-        if (!bleActivity.hasAllBlePermissions()) {
+        if (bleActivity.hasAllBlePermissions()) {
             pendingScanAfterPermission = true;
             bleActivity.requestAllBlePermissions(this, REQ_BLE_PERMS);
             return;
         }
 
-        // Готові — скануємо
         setScanning(true);
         bleActivity.startBleScan((names, devices) -> runOnUiThread(() -> {
             deviceAdapter.clear();
@@ -239,8 +227,6 @@ public class CreateRoomActivity extends ImmersiveActivity {
             if (!names.isEmpty()) {
                 dropdownDevices.setText(names.get(0), false);
                 bleActivity.setSelectedDevice(0);
-                // (опційно) відразу показати список:
-                // dropdownDevices.showDropDown();
             } else {
                 dropdownDevices.setText("", false);
                 toast("Пристрої не знайдені");
@@ -275,7 +261,7 @@ public class CreateRoomActivity extends ImmersiveActivity {
     }
 
     // ---------------------------------------
-    //  Permissions / Activity results
+    //  Permissions
     // ---------------------------------------
     @Override
     public void onRequestPermissionsResult(int requestCode,
@@ -295,22 +281,6 @@ public class CreateRoomActivity extends ImmersiveActivity {
                 toast("Дозволи BLE не надані");
             }
         }
-    }
-
-    @Override
-    @SuppressLint("MissingSuperCall") // ми свідомо не викликаємо super для застарілого API
-    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        if (requestCode == REQ_ENABLE_BT) {
-            if (resultCode == Activity.RESULT_OK && pendingScanAfterEnableBt) {
-                pendingScanAfterEnableBt = false;
-                ensureBleReadyAndScan();
-            } else {
-                pendingScanAfterEnableBt = false;
-                toast("Bluetooth не увімкнено");
-            }
-            return;
-        }
-        super.onActivityResult(requestCode, resultCode, data);
     }
 
     // ---------------------------------------

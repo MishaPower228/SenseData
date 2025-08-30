@@ -19,7 +19,7 @@ import retrofit2.converter.gson.GsonConverterFactory;
 public final class ApiClientMain {
 
     // ⚠️ Замiни на свою адресу. Обов’язково закінчується на /api/
-    private final static String BASE_URL = "http://192.168.5.32:5210/api/";
+    private final static String BASE_URL = "http://192.168.0.200:5210/api/";
 
     // можна вмикати/вимикати логування без BuildConfig
     private final static boolean HTTP_LOGS_ENABLED = true;

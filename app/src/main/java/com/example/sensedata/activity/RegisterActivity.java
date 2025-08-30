@@ -1,4 +1,4 @@
-package com.example.sensedata.user;
+package com.example.sensedata.activity;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -6,6 +6,7 @@ import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
 import android.util.Patterns;
+import android.view.View;
 import android.view.WindowManager;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
@@ -19,8 +20,6 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 
 import com.example.sensedata.R;
-import com.example.sensedata.activity.ImmersiveActivity;
-import com.example.sensedata.activity.MainActivity;
 import com.example.sensedata.model.user.LoginRequest;
 import com.example.sensedata.model.user.RegisterRequest;
 import com.example.sensedata.model.user.UserResponse;
@@ -58,6 +57,16 @@ public class RegisterActivity extends ImmersiveActivity {
                         | WindowManager.LayoutParams.SOFT_INPUT_STATE_HIDDEN
         );
 
+        View root = findViewById(R.id.register_root);
+        if (root == null) root = findViewById(android.R.id.content);
+        applyImePadding(root);
+
+        // Якщо root НЕ є NestedScrollView → підсунемо кнопку логіну
+        Button buttonRegister = findViewById(R.id.buttonRegister);
+        if (!(root instanceof androidx.core.widget.NestedScrollView) && buttonRegister != null) {
+            applyImeMargin(buttonRegister);
+        }
+
         // init views
         usernameEditText = findViewById(R.id.editTextUsername);
         emailEditText = findViewById(R.id.editTextEmail);
@@ -65,7 +74,6 @@ public class RegisterActivity extends ImmersiveActivity {
         confirmPasswordEditText = findViewById(R.id.editTextConfirmPassword);
         registerCard = findViewById(R.id.registerCard);
 
-        Button registerButton = findViewById(R.id.buttonRegister);
         TextView loginLink = findViewById(R.id.textLoginLink);
         CheckBox showPasswordCheckBox = findViewById(R.id.checkboxShowPassword);
 
@@ -89,7 +97,8 @@ public class RegisterActivity extends ImmersiveActivity {
         });
 
         // Кнопка реєстрації
-        registerButton.setOnClickListener(v -> {
+        assert buttonRegister != null;
+        buttonRegister.setOnClickListener(v -> {
             String usernameInput = usernameEditText.getText().toString().trim();
             String email = emailEditText.getText().toString().trim();
             String password = passwordEditText.getText().toString().trim();

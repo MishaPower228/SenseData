@@ -3,6 +3,7 @@ package com.example.sensedata.AuthInterceptor;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.example.sensedata.model.user.RefreshRequest;
@@ -26,7 +27,7 @@ public class TokenAuthenticator implements Authenticator {
 
     @Nullable
     @Override
-    public Request authenticate(Route route, Response response) throws IOException {
+    public Request authenticate(Route route, @NonNull Response response) throws IOException {
         SharedPreferences prefs = context.getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE);
         String refreshToken = prefs.getString("refreshToken", null);
         String username = prefs.getString("username", null);

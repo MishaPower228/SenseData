@@ -5,27 +5,44 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.DiffUtil;
+import androidx.recyclerview.widget.ListAdapter;
+import androidx.recyclerview.widget.RecyclerView;
+
 import com.example.sensedata.R;
 import com.example.sensedata.model.recommendations.RecommendationHistoryDto;
 
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 
-import androidx.annotation.NonNull;
-import androidx.recyclerview.widget.RecyclerView;
+public class RecommendationHistoryAdapter extends ListAdapter<RecommendationHistoryDto, RecommendationHistoryAdapter.VH> {
 
-public class RecommendationHistoryAdapter extends RecyclerView.Adapter<RecommendationHistoryAdapter.VH> {
-
-    private final List<RecommendationHistoryDto> items = new ArrayList<>();
     private final SimpleDateFormat inFmt  = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault());
     private final SimpleDateFormat outFmt = new SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault());
 
-    public void submit(List<RecommendationHistoryDto> list) {
-        items.clear();
-        if (list != null) items.addAll(list);
-        notifyDataSetChanged();
+    // ==== DiffUtil ====
+    private static final DiffUtil.ItemCallback<RecommendationHistoryDto> DIFF =
+            new DiffUtil.ItemCallback<>() {
+                @Override
+                public boolean areItemsTheSame(@NonNull RecommendationHistoryDto oldItem,
+                                               @NonNull RecommendationHistoryDto newItem) {
+                    // Унікальність за первинним ключем Id
+                    return oldItem.id == newItem.id;
+                }
+
+                @Override
+                public boolean areContentsTheSame(@NonNull RecommendationHistoryDto oldItem,
+                                                  @NonNull RecommendationHistoryDto newItem) {
+                    return Objects.equals(oldItem.recommendation, newItem.recommendation)
+                            && Objects.equals(oldItem.createdAt, newItem.createdAt)
+                            && Objects.equals(oldItem.roomName, newItem.roomName);
+                }
+            };
+
+    public RecommendationHistoryAdapter() {
+        super(DIFF);
     }
 
     @NonNull
@@ -36,12 +53,11 @@ public class RecommendationHistoryAdapter extends RecyclerView.Adapter<Recommend
         return new VH(v);
     }
 
-
     @Override
     public void onBindViewHolder(@NonNull VH h, int pos) {
-        RecommendationHistoryDto it = items.get(pos);
+        RecommendationHistoryDto it = getItem(pos);
 
-        // формат дати
+        // --- формат дати ---
         String pretty = it.createdAt;
         try {
             if (pretty != null) {
@@ -52,13 +68,11 @@ public class RecommendationHistoryAdapter extends RecyclerView.Adapter<Recommend
         } catch (Exception ignore) {}
         h.tvDate.setText(pretty == null ? "" : pretty);
 
-        // текст без крапок/булітів
-        String txt = (it.recommendation == null) ? "" : it.recommendation;
-
-        // косметика: прибрати можливі "• " всередині, зробити кожен рядок з emoji
+        // --- текст рекомендацій ---
+        String txt = it.recommendation == null ? "" : it.recommendation;
         txt = txt.replace("\r", "");
-        String[] lines = txt.split("\n");
         StringBuilder sb = new StringBuilder();
+        String[] lines = txt.split("\n");
         for (int i = 0; i < lines.length; i++) {
             String line = lines[i].trim().replaceFirst("^•\\s*", "");
             sb.append(iconFor(line)).append(" ").append(line);
@@ -75,15 +89,13 @@ public class RecommendationHistoryAdapter extends RecyclerView.Adapter<Recommend
         return "🧠";
     }
 
-    @Override public int getItemCount() { return items.size(); }
-
-    static class VH extends RecyclerView.ViewHolder {
+    // ==== ViewHolder ====
+    public static class VH extends RecyclerView.ViewHolder {
         final TextView tvDate, tvText;
-        VH(View v) {
+        public VH(@NonNull View v) {
             super(v);
-            tvDate   = v.findViewById(R.id.tvDate);
-            tvText   = v.findViewById(R.id.tvText);
+            tvDate = v.findViewById(R.id.tvDate);
+            tvText = v.findViewById(R.id.tvText);
         }
     }
-
 }
